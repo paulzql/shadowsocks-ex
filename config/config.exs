@@ -20,6 +20,9 @@ use Mix.Config
 #
 #     config :logger, level: :info
 #
+config :logger,
+  handle_otp_reports: true,
+  handle_sasl_reports: true
 
 # It is also possible to import configuration files, relative to this
 # directory. For example, you can emulate configuration per environment

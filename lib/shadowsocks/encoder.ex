@@ -8,7 +8,7 @@ defmodule Shadowsocks.Encoder do
     "aes-192-cfb" => :aes_192_cfb,
     "aes-256-cfb" => :aes_256_cfb
   }
-  
+
   @key_iv_len %{
     rc4_md5: {16, 16},
     aes_128_cfb: {16, 16},
@@ -21,7 +21,7 @@ defmodule Shadowsocks.Encoder do
   def init(method, pass) do
     method = @methods[method]
     {key, iv} = @key_iv_len[method] |> gen_key_iv(pass)
-    %Shadowsocks.Encoder{method: @methods[method],
+    %Shadowsocks.Encoder{method: method,
                          key: key,
                          enc_iv: iv,
                          enc_stream: init_stream(method, key, iv)}
@@ -43,7 +43,7 @@ defmodule Shadowsocks.Encoder do
   def encode(%Encoder{key: key, enc_iv: iv, enc_rest: rest}=encoder, data) do
     dsize = byte_size(data)
     rsize = byte_size(rest)
-    len = div (dsize+rsize), 256
+    len = div((dsize+rsize), 16) * 16
     <<data::binary-size(len), rest::binary>> = <<rest::binary, data::binary>>
 
     enc_data = :crypto.block_encrypt(:aes_cfb128, key, iv, data)
@@ -54,11 +54,10 @@ defmodule Shadowsocks.Encoder do
   end
 
   # decode
-  def decode(%Encoder{dec_iv: nil, dec_rest: rest, enc_iv: iv, method: m, key: key}=encoder, data) do
-    ivlen = byte_size(iv)
+  def decode(%Encoder{dec_iv: nil, dec_rest: rest, enc_iv: enc_iv, method: m, key: key}=encoder, data) do
+    ivlen = byte_size(enc_iv)
     case <<rest::binary, data::binary>> do
-      rest1 when byte_size(rest1) >= ivlen ->
-        <<iv::binary-size(ivlen), rest1::binary>> = rest1
+      <<iv::binary-size(ivlen), rest1::binary>> ->
         decode(%Encoder{encoder | dec_stream: init_stream(m, key, iv), dec_iv: iv, dec_rest: <<>>}, rest1)
       rest1 ->
         {%Encoder{encoder | dec_rest: rest1}, <<>>}
@@ -71,7 +70,7 @@ defmodule Shadowsocks.Encoder do
   def decode(%Encoder{key: key, dec_iv: iv, dec_rest: rest}=encoder, data) do
     dsize = byte_size(data)
     rsize = byte_size(rest)
-    len = div (dsize+rsize), 256
+    len = div((dsize+rsize), 16) * 16
     <<data::binary-size(len), rest::binary>> = <<rest::binary, data::binary>>
 
     dec_data = :crypto.block_decrypt(:aes_cfb128, key, iv, data)
@@ -82,16 +81,16 @@ defmodule Shadowsocks.Encoder do
   end
 
   defp gen_key_iv({keylen, ivlen}, pass) do
-    {gen_key(pass, keylen, ivlen, <<>>), :crypto.strong_rand_bytes(ivlen)}
+    {gen_key(pass, keylen, <<>>), :crypto.strong_rand_bytes(ivlen)}
   end
 
-  defp gen_key(_, keylen, ivlen, acc) when keylen+ivlen <= byte_size(acc) do
-      <<key::binary-size(keylen), _::binary>> = acc
-      key
+  defp gen_key(_, keylen, acc) when byte_size(acc) >= keylen do
+    <<key::binary-size(keylen), _::binary>> = acc
+    key
   end
-  defp gen_key(pass, keylen, ivlen, acc) do
+  defp gen_key(pass, keylen, acc) do
     digest = :crypto.hash(:md5, <<acc::binary, pass::binary>>)
-    gen_key(pass, keylen, ivlen, <<acc::binary, digest::binary>>)
+    gen_key(pass, keylen, <<acc::binary, digest::binary>>)
   end
 
   defp init_stream(:rc4_md5, key, iv) do

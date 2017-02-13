@@ -2,6 +2,7 @@ defmodule Shadowsocks.Conn do
   use GenServer
   use Bitwise
   require Shadowsocks.Event
+  require Logger
   import Record
   alias Shadowsocks.Encoder
 
@@ -24,8 +25,8 @@ defmodule Shadowsocks.Conn do
     :proc_lib.init_ack({:ok, self()})
     wait_socket(socket)
 
-    state()
-    |> state(ota: args.ota, port: args.port, type: args.type, server: args.server)
+    state(csock: socket)
+    |> state(ota: args[:ota], port: args[:port], type: args[:type], server: args[:server])
     |> state(encoder: Encoder.init(method, pass))
     |> init_proto
   end
@@ -81,6 +82,10 @@ defmodule Shadowsocks.Conn do
     handle_ota(state(conn, ota_data: <<rest::binary, data::binary>>))
   end
 
+  def handle_info(_, conn) do
+    {:noreply, conn}
+  end
+
   def terminate(_, state(up: up, down: down, port: port)) do
     Shadowsocks.Event.flow(port, down, up)
   end
@@ -96,6 +101,7 @@ defmodule Shadowsocks.Conn do
         send self(), {:send, data}
         :inet.setopts(csock, active: :once)
         Shadowsocks.Event.connect({:ok, addr, port})
+        Logger.debug "addr: #{addr}:#{port}"
         :gen_server.enter_loop(__MODULE__, [], init_handler(state(conn, ssock: ssock, server: {addr,port})))
       error ->
         Shadowsocks.Event.connect({error, addr, port})
@@ -130,37 +136,37 @@ defmodule Shadowsocks.Conn do
   ## Data encoding / decoding
   ## ----------------------------------------------------------------------------------------------------
   defp client_c2s(data, state(ssock: ssock, up: up, sending: s)=conn) do
-    {encoder, data} = Encoder.encode(conn.encoder, data)
+    {encoder, data} = Encoder.encode(state(conn, :encoder), data)
     s = s + try_send(ssock, data)
     {:noreply, state(conn, encoder: encoder, up: up+byte_size(data), sending: s)}
   end
   defp client_ota_c2s(data, state(ssock: ssock, up: up, sending: s, ota_id: id)=conn) do
     hmac = :crypto.hmac(:sha, [conn.ota_iv, <<id::32>>], data, @hmac_len)
-    {encoder, data} = Encoder.encode(conn.encoder, [<<byte_size(data)::16>>, hmac, data])
+    {encoder, data} = Encoder.encode(state(conn, :encoder), [<<byte_size(data)::16>>, hmac, data])
     s = s + try_send(ssock, data)
     {:noreply, state(conn, encoder: encoder, up: up+byte_size(data), sending: s, ota_id: id+1)}
   end
 
   defp client_s2c(data, state(csock: csock, down: down, sending: s)=conn) do
-    {encoder, data} = Encoder.decode(conn.encoder, data)
+    {encoder, data} = Encoder.decode(state(conn, :encoder), data)
     s = s + try_send(csock, data)
     {:noreply, state(conn, encoder: encoder, down: down+byte_size(data), sending: s)}
   end
 
 
   defp server_c2s(data, state(ssock: ssock, up: up, sending: s)=conn) do
-    {encoder, data} = Encoder.decode(conn.encoder, data)
+    {encoder, data} = Encoder.decode(state(conn, :encoder), data)
     s = s + try_send(ssock, data)
     {:noreply, state(conn, encoder: encoder, up: up+byte_size(data), sending: s)}
   end
 
   defp server_ota_c2s(data, state(ota_data: rest)=conn) do
-    {encoder, data} = Encoder.decode(conn.encoder, data)
+    {encoder, data} = Encoder.decode(state(conn, :encoder), data)
     handle_ota(state(conn, ota_data: <<rest::binary, data::binary>>, encoder: encoder))
   end
 
   defp server_s2c(data, state(csock: csock, down: down, sending: s)=conn) do
-    {encoder, data} = Encoder.encode(conn.encoder, data)
+    {encoder, data} = Encoder.encode(state(conn,:encoder), data)
     s = s + try_send(csock, data)
     {:noreply, state(conn, encoder: encoder, down: down+byte_size(data), sending: s)}
   end
@@ -170,11 +176,11 @@ defmodule Shadowsocks.Conn do
     <<len::16, _::binary>> = data
     handle_ota(state(conn, ota_len: len+@hmac_len+2))
   end
-  defp handle_ota(state(ota_iv: iv, ota_data: data, ota_len: len, ota_id: id, up: up, sending: s)=conn) do
+  defp handle_ota(state(ssock: ssock, ota_iv: iv, ota_data: data, ota_len: len, ota_id: id, up: up, sending: s)=conn) do
     len = len - @hmac_len - 2
     <<_::16, hmac::binary-size(@hmac_len), data::binary-size(len), rest::binary>> = data
     ^hmac = :crypto.hmac(:sha, [iv, <<id::32>>], data, @hmac_len)
-    s = s + try_send(conn.ssock,  data)
+    s = s + try_send(ssock,  data)
     handle_ota(state(conn, up: up+byte_size(data), sending: s, ota_data: rest, ota_len: 2, ota_id: id+1))
   end
   defp handle_ota(conn), do: {:noreply, conn}
@@ -202,10 +208,11 @@ defmodule Shadowsocks.Conn do
 
   defp recv_target(conn) do
     {<<addr_type::8, data::binary>>, conn} = recv_decode(1, <<>>, conn)
-    {ipport, rest, conn} = recv_addr(addr_type &&& 0x0F, data, conn)
-    ipport = parse_addr(addr_type &&& 0x0F, ipport)
-    if addr_type &&& @ota_flag == @ota_flag do
-      {rest, conn} = check_ota([addr_type,ipport], rest, conn)
+    {ipport_bin, rest, conn} = recv_addr(addr_type &&& 0x0F, data, conn)
+
+    ipport = parse_addr(addr_type &&& 0x0F, ipport_bin)
+    if (addr_type &&& @ota_flag) == @ota_flag do
+      {rest, conn} = check_ota([addr_type,ipport_bin], rest, conn)
       {ipport, rest, conn}
     else
       {ipport, rest, conn}
@@ -241,9 +248,9 @@ defmodule Shadowsocks.Conn do
   defp parse_addr(@atyp_v6, <<ip::binary-size(16), port::16>>), do: {for(<<x::16 <- ip>>, do: x) |> List.to_tuple(), port}
   defp parse_addr(@atyp_dom, <<len::8, ip::binary-size(len), port::16>>), do: {String.to_charlist(ip), port}
 
-  defp check_ota(check_data, rest, conn) do
+  defp check_ota(check_data, rest, state(ota_iv: ota_iv, encoder: encoder)=conn) do
     {<<hmac::binary-size(@hmac_len), rest::binary>>, conn} = recv_decode(@hmac_len, rest, conn)
-    ^hmac = :crypto.hmac(:sha, [conn.ota_iv,conn.encoder.key], check_data, @hmac_len)
+    ^hmac = :crypto.hmac(:sha, [ota_iv, encoder.key], check_data, @hmac_len)
     {rest, state(conn, ota: true)}
   end
 

@@ -27,4 +27,9 @@ defmodule Shadowsocks do
   def start_client(port, pass, server, opts) do
     :todo
   end
+
+  def test() do
+    Shadowsocks.Listener.start_link(type: :server, port: 8888, method: "aes-128-cfb", password: "pass1", ota: true)
+  end
+
 end
