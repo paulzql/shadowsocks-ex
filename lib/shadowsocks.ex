@@ -29,7 +29,7 @@ defmodule Shadowsocks do
   end
 
   def test() do
-    Shadowsocks.Listener.start_link(type: :server, port: 8888, method: "aes-128-cfb", password: "pass1", ota: true)
+    Shadowsocks.Listener.start_link(type: :server, port: 8889, method: "aes-128-cfb", password: "pass1", ota: true)
   end
 
 end

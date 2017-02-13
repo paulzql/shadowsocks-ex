@@ -6,7 +6,7 @@ defmodule Shadowsocks.Conn do
   import Record
   alias Shadowsocks.Encoder
 
-  defrecordp :state, csock: nil, ssock: nil, ota: nil, port: nil, encoder: nil, down: 0, up: 0, sending: 0, ota_data: <<>>, ota_len: 2, ota_id: 0, ota_iv: <<>>, type: :server, server: nil, c2s_handler: nil, s2c_handler: nil
+  defrecordp :state, csock: nil, ssock: nil, ota: nil, port: nil, encoder: nil, down: 0, up: 0, sending: 0, ota_data: <<>>, ota_len: 0, ota_id: 0, ota_iv: <<>>, type: :server, server: nil, c2s_handler: nil, s2c_handler: nil
 
   @recv_timeout 180000
   @tcp_opts [:binary, {:packet, :raw}, {:active, :once}, {:nodelay, true}]
@@ -108,12 +108,12 @@ defmodule Shadowsocks.Conn do
     end
   end
 
-  defp init_proto(state(type: :client, csock: csock, server: {ip,port})=conn) do
+  defp init_proto(state(type: :client, ota: ota, csock: csock, server: {ip,port})=conn) do
     {atyp, data} = recv_socks5(csock)
     case :gen_tcp.connect(ip, port, @tcp_opts) do
       {:ok, ssock} ->
         {encoder, data} =
-        if conn.ota do
+        if ota do
           hmac = :crypto.hmac(:sha, [conn.encoder.enc_iv,conn.encoder.key], [atyp ||| @ota_flag, data], @hmac_len)
           Encoder.encode(conn.encoder, [atyp ||| @ota_flag, data, hmac])
         else
@@ -172,17 +172,22 @@ defmodule Shadowsocks.Conn do
   end
 
   # handle ota frame
-  defp handle_ota(state(ota_data: data, ota_len: 2)=conn) when byte_size(data) >= 2 do
-    <<len::16, _::binary>> = data
-    handle_ota(state(conn, ota_len: len+@hmac_len+2))
+  defp handle_ota(state(ota_len: 0, ota_data: data)=conn) do
+    case data do
+      <<len::16, rest::binary>> ->
+        handle_ota(state(conn, ota_len: len+@hmac_len, ota_data: rest))
+      _ ->
+        {:noreply, conn}
+    end
   end
-  defp handle_ota(state(ssock: ssock, ota_iv: iv, ota_data: data, ota_len: len, ota_id: id, up: up, sending: s)=conn) do
-    len = len - @hmac_len - 2
-    <<_::16, hmac::binary-size(@hmac_len), data::binary-size(len), rest::binary>> = data
+  defp handle_ota(state(ota_len: len, ota_data: data, ota_id: id, ota_iv: iv, up: up)=conn) when byte_size(data) >= len do
+    len = len - @hmac_len
+    <<hmac::binary-size(@hmac_len), data::binary-size(len), rest::binary>> = data
     ^hmac = :crypto.hmac(:sha, [iv, <<id::32>>], data, @hmac_len)
-    s = s + try_send(ssock,  data)
-    handle_ota(state(conn, up: up+byte_size(data), sending: s, ota_data: rest, ota_len: 2, ota_id: id+1))
+    s = state(conn, :sending) + try_send(state(conn, :ssock),  data)
+    handle_ota(state(conn, up: up+byte_size(data), sending: s, ota_data: rest, ota_len: 0, ota_id: id+1))
   end
+
   defp handle_ota(conn), do: {:noreply, conn}
 
   defp try_send(sock, data) do
