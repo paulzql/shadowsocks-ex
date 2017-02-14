@@ -21,7 +21,6 @@ use Mix.Config
 #     config :logger, level: :info
 #
 config :logger,
-  handle_otp_reports: true,
   handle_sasl_reports: true
 
 # It is also possible to import configuration files, relative to this
@@ -30,4 +29,4 @@ config :logger,
 # Configuration from the imported file will override the ones defined
 # here (which is why it is important to import them last).
 #
-#     import_config "#{Mix.env}.exs"
+import_config "#{Mix.env}.exs"
