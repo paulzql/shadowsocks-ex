@@ -12,7 +12,8 @@ defmodule Shadowsocks.Application do
     children = [
       # Starts a worker by calling: Shadowsocks.Worker.start_link(arg1, arg2, arg3)
       # worker(Shadowsocks.Worker, [arg1, arg2, arg3]),
-      worker(GenEvent, [[name: Shadowsocks.Event]])
+      worker(GenEvent, [[name: Shadowsocks.Event]]),
+      supervisor(Shadowsocks.ListenerSup, [])
     ]
 
     # See http://elixir-lang.org/docs/stable/elixir/Supervisor.html

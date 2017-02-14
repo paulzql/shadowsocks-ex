@@ -7,8 +7,13 @@ defmodule Shadowsocks.Listener do
 
   @opts [:binary, {:backlog, 20},{:nodelay, true}, {:active, false}, {:packet, :raw},{:reuseaddr, true},{:send_timeout_close, true}]
   @default_arg %{ota: false, method: "aes-256-cfb"}
+
   def update(pid, args) do
     GenServer.call pid, {:update, args}
+  end
+
+  def port(pid) do
+    GenServer.call pid, :get_port
   end
 
   def start_link(args) when is_list(args) do
@@ -56,15 +61,26 @@ defmodule Shadowsocks.Listener do
   end
 
   def handle_call({:update, args}, _from, state(args: old_args)=state) do
-    args = Enum.filter(args, fn(k)-> :method==k or :password==k end)
-    state(state, args: Enum.into(args, old_args))
+    try do
+      args = Enum.filter(args, fn({k,_})-> :method==k or :password==k end)
+      |> Enum.into(old_args)
+      |> validate_arg(:method, Shadowsocks.Encoder.methods())
+      |> validate_arg(:password, &is_binary/1)
+      {:reply, :ok, state(state, args: args)}
+    rescue
+      e in ArgumentError ->
+        {:reply, {:error, e}, state}
+    end
+  end
+
+  def handle_call(:get_port, _, state(port: port)=state) do
+    {:reply, port, state}
   end
 
   def handle_info({:inet_async, _, _, {:ok, csock}}, state) do
     true = :inet_db.register_socket(csock, :inet_tcp)
-    {:ok, {addr, _}} = :inet.peername(csock)
-    Shadowsocks.Event.accept(state(state, :port), addr)
     {:ok, pid} = Shadowsocks.Conn.start_link(csock, state(state, :args))
+    Process.put(pid, {0, 0})
     case :gen_tcp.controlling_process(csock, pid) do
       :ok ->
         send pid, {:shoot, csock}
@@ -85,7 +101,18 @@ defmodule Shadowsocks.Listener do
     {:stop, error, state}
   end
 
-  def handle_info({:EXIT, _pid, _reason}, state) do
+  def handle_info({:flow, pid, down, up}, state) do
+    with {old_down, old_up} <- Process.get(pid) do
+      Process.put(pid, {old_down+down, old_up+up})
+    end
+    {:noreply, state}
+  end
+
+  def handle_info({:EXIT, pid, reason}, state(port: port)=state) do
+    with {down, up} <- Process.get(pid) do
+      Shadowsocks.Event.close_conn(port, pid, reason, {down, up})
+      Process.delete(pid)
+    end
     {:noreply, state}
   end
 

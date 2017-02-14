@@ -6,7 +6,7 @@ defmodule Shadowsocks.Conn do
   import Record
   alias Shadowsocks.Encoder
 
-  defrecordp :state, csock: nil, ssock: nil, ota: nil, port: nil, encoder: nil, down: 0, up: 0, sending: 0, ota_data: <<>>, ota_len: 0, ota_id: 0, ota_iv: <<>>, type: :server, server: nil, c2s_handler: nil, s2c_handler: nil
+  defrecordp :state, csock: nil, ssock: nil, ota: nil, port: nil, encoder: nil, down: 0, up: 0, sending: 0, ota_data: <<>>, ota_len: 0, ota_id: 0, ota_iv: <<>>, type: :server, server: nil, c2s_handler: nil, s2c_handler: nil, parent: nil
 
   @recv_timeout 180000
   @tcp_opts [:binary, {:packet, :raw}, {:active, :once}, {:nodelay, true}]
@@ -18,14 +18,16 @@ defmodule Shadowsocks.Conn do
   @ota_flag 0x10
 
   def start_link(socket, args) do
-    :proc_lib.start_link(__MODULE__, :init, [socket, args])
+    :proc_lib.start_link(__MODULE__, :init, [self(), socket, args])
   end
 
-  def init(socket, %{method: method, password: pass}=args) do
+  def init(parent, socket, %{method: method, password: pass}=args) do
     :proc_lib.init_ack({:ok, self()})
     wait_socket(socket)
 
-    state(csock: socket)
+    Shadowsocks.Event.open_conn(args[:port], self(), socket)
+
+    state(csock: socket, parent: parent)
     |> state(ota: args[:ota], port: args[:port], type: args[:type], server: args[:server])
     |> state(encoder: Encoder.init(method, pass))
     |> init_proto
@@ -86,8 +88,8 @@ defmodule Shadowsocks.Conn do
     {:noreply, conn}
   end
 
-  def terminate(_, state(up: up, down: down, port: port)) do
-    Shadowsocks.Event.flow(port, down, up)
+  def terminate(_, state(parent: parent, up: up, down: down)) do
+    send parent, {:flow, self(), down, up}
   end
 
   ## ----------------------------------------------------------------------------------------------------
@@ -100,11 +102,10 @@ defmodule Shadowsocks.Conn do
       {:ok, ssock} ->
         send self(), {:send, data}
         :inet.setopts(csock, active: :once)
-        Shadowsocks.Event.connect({:ok, addr, port})
-        Logger.debug "addr: #{addr}:#{port}"
+        Shadowsocks.Event.connect(state(conn, :port),{:ok, addr, port})
         :gen_server.enter_loop(__MODULE__, [], init_handler(state(conn, ssock: ssock, server: {addr,port})))
       error ->
-        Shadowsocks.Event.connect({error, addr, port})
+        Shadowsocks.Event.connect(state(conn, :port),{error, addr, port})
     end
   end
 
