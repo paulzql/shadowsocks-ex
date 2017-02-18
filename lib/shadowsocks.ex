@@ -78,6 +78,26 @@ defmodule Shadowsocks do
     :ok
   end
 
+  @doc """
+  check port is running
+  """
+  def running?(port) do
+    case find_listener(port) do
+      [] -> false
+      _ -> true
+    end
+  end
+
+  @doc """
+  get listener `pid`
+  """
+  def get(port) do
+    case find_listener(port) do
+      [pid|_] -> pid
+      _ -> nil
+    end
+  end
+
   defp find_listener(port) do
     children = Supervisor.which_children(Shadowsocks.ListenerSup)
     for {_,p,_,_} <- children, Shadowsocks.Listener.port(p) == port, do: p
