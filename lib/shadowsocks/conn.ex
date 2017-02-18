@@ -10,6 +10,7 @@ defmodule Shadowsocks.Conn do
 
   @recv_timeout 180000
   @tcp_opts [:binary, {:packet, :raw}, {:active, :once}, {:nodelay, true}]
+  @flow_report_limit 5 * 1024 * 1024
 
   @atyp_v4 0x01
   @atyp_v6 0x04
@@ -46,6 +47,11 @@ defmodule Shadowsocks.Conn do
   ## gen server
   ## ----------------------------------------------------------------------------------------------------
   def init([]), do: :pass
+
+  def handle_info({:tcp, _, _}=msg, state(up: up, down: down)=conn) when up > @flow_report_limit or down > @flow_report_limit do
+    send state(conn, :parent), {:flow, down, up}
+    handle_info(msg, state(conn, up: 0, down: 0))
+  end
 
   def handle_info({:tcp, csock, data}, state(csock: csock, c2s_handler: handler)=conn) do
     :inet.setopts(csock, active: :once)

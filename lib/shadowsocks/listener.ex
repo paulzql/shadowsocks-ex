@@ -3,10 +3,12 @@ defmodule Shadowsocks.Listener do
   require Shadowsocks.Event
   import Record
 
-  defrecordp :state, lsock: nil, args: nil, port: nil
+  defrecordp :state, lsock: nil, args: nil, port: nil, up: 0, down: 0, flow_time: 0
 
   @opts [:binary, {:backlog, 20},{:nodelay, true}, {:active, false}, {:packet, :raw},{:reuseaddr, true},{:send_timeout_close, true}]
   @default_arg %{ota: false, method: "aes-256-cfb"}
+  @min_flow 5 * 1024 * 1024
+  @min_time 60 * 1000
 
   def update(pid, args) do
     GenServer.call pid, {:update, args}
@@ -101,11 +103,18 @@ defmodule Shadowsocks.Listener do
     {:stop, error, state}
   end
 
-  def handle_info({:flow, pid, down, up}, state) do
+  def handle_info({:flow, pid, down, up}, state(up: pup,down: pdown, flow_time: ft)=s) do
     with {old_down, old_up} <- Process.get(pid) do
       Process.put(pid, {old_down+down, old_up+up})
     end
-    {:noreply, state}
+    tick = System.system_time(:milliseconds)
+    case {pup+up, pdown+down} do
+      {u, d} when u > @min_flow or d > @min_flow or tick - ft > @min_time ->
+        Shadowsocks.Event.flow(state(s, :port), d, u)
+        {:noreply, state(s, up: 0, down: 0, flow_time: tick)}
+      {u,d} ->
+        {:noreply, state(s, up: u, down: d)}
+    end
   end
 
   def handle_info({:EXIT, pid, reason}, state(port: port)=state) do
