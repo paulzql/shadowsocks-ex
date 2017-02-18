@@ -32,5 +32,10 @@ defmodule Shadowsocks.Event do
       GenEvent.notify(Shadowsocks.Event, {:port, :flow, {unquote(port),unquote(down), unquote(up)}})
     end
   end
+  defmacro sync_flow(port, down, up) do
+    quote do
+      GenEvent.sync_notify(Shadowsocks.Event, {:port, :flow, {unquote(port),unquote(down), unquote(up)}})
+    end
+  end
 
 end

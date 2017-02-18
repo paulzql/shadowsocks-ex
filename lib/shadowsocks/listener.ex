@@ -125,6 +125,13 @@ defmodule Shadowsocks.Listener do
     {:noreply, state}
   end
 
+  def terminate(_, state(port: port, up: up, down: down)) when up > 0 and down > 0 do
+    Shadowsocks.Event.sync_flow(port, down, up)
+  end
+  def terminate(_, state) do
+    state
+  end
+
   defp validate_arg(arg, key, :required) do
     unless Map.has_key?(arg, key) do
       raise ArgumentError, message: "required #{key}"
