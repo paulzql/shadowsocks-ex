@@ -49,7 +49,7 @@ defmodule Shadowsocks.Conn do
   def init([]), do: :pass
 
   def handle_info({:tcp, _, _}=msg, state(up: up, down: down)=conn) when up > @flow_report_limit or down > @flow_report_limit do
-    send state(conn, :parent), {:flow, down, up}
+    send state(conn, :parent), {:flow, self(), down, up}
     handle_info(msg, state(conn, up: 0, down: 0))
   end
 
