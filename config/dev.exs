@@ -4,7 +4,7 @@ config :shadowsocks, :listeners,
   [
     [
       type: :server,
-      method: "aes-256-cfb",
+      method: "rc4-md5",
       password: "pass",
       port: 8888,
       ota: false,

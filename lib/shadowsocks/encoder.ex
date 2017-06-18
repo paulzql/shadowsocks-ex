@@ -32,10 +32,10 @@ defmodule Shadowsocks.Encoder do
   end
 
   # encode
-  def encode(%Encoder{iv_sent: false, enc_iv: iv}=encoder, data) do
-    {encoder, enc_data} = %Encoder{encoder | iv_sent: true} |> encode(data)
-    {encoder, <<iv::binary, enc_data::binary>>}
-  end
+  # def encode(%Encoder{iv_sent: false, enc_iv: iv}=encoder, data) do
+  #   {encoder, enc_data} = %Encoder{encoder | iv_sent: true} |> encode(data)
+  #   {encoder, <<iv::binary, enc_data::binary>>}
+  # end
   def encode(%Encoder{method: :rc4_md5, enc_stream: stream}=encoder, data) do
     {stream, enc_data} = :crypto.stream_encrypt(stream, data)
     {%Encoder{encoder | enc_stream: stream}, enc_data}
@@ -54,15 +54,15 @@ defmodule Shadowsocks.Encoder do
   end
 
   # decode
-  def decode(%Encoder{dec_iv: nil, dec_rest: rest, enc_iv: enc_iv, method: m, key: key}=encoder, data) do
-    ivlen = byte_size(enc_iv)
-    case <<rest::binary, data::binary>> do
-      <<iv::binary-size(ivlen), rest1::binary>> ->
-        decode(%Encoder{encoder | dec_stream: init_stream(m, key, iv), dec_iv: iv, dec_rest: <<>>}, rest1)
-      rest1 ->
-        {%Encoder{encoder | dec_rest: rest1}, <<>>}
-    end
-  end
+  # def decode(%Encoder{dec_iv: nil, dec_rest: rest, enc_iv: enc_iv, method: m, key: key}=encoder, data) do
+  #   ivlen = byte_size(enc_iv)
+  #   case <<rest::binary, data::binary>> do
+  #     <<iv::binary-size(ivlen), rest1::binary>> ->
+  #       decode(%Encoder{encoder | dec_stream: init_stream(m, key, iv), dec_iv: iv, dec_rest: <<>>}, rest1)
+  #     rest1 ->
+  #       {%Encoder{encoder | dec_rest: rest1}, <<>>}
+  #   end
+  # end
   def decode(%Encoder{method: :rc4_md5, dec_stream: stream}=encoder, data) do
     {stream, dec_data} = :crypto.stream_decrypt(stream, data)
     {%Encoder{encoder | dec_stream: stream}, dec_data}

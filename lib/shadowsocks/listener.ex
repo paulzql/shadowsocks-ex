@@ -5,8 +5,8 @@ defmodule Shadowsocks.Listener do
 
   defrecordp :state, lsock: nil, args: nil, port: nil, up: 0, down: 0, flow_time: 0
 
-  @opts [:binary, {:backlog, 20},{:nodelay, true}, {:active, false}, {:packet, :raw},{:reuseaddr, true},{:send_timeout_close, true}]
-  @default_arg %{ota: false, method: "aes-256-cfb"}
+  @opts [:binary, {:backlog, 20},{:nodelay, true}, {:active, false}, {:packet, :raw},{:reuseaddr, true},{:send_timeout_close, true}, {:buffer, 16384}]
+  @default_arg %{ota: false, method: "rc4-md5"}
   @min_flow 5 * 1024 * 1024
   @min_time 60 * 1000
 
@@ -36,6 +36,12 @@ defmodule Shadowsocks.Listener do
       |> validate_arg(:server, :required)
       |> validate_arg(:server, &is_tuple/1)
     end
+    args =
+      case args do
+        %{conn_mod: mod} when is_atom(mod) -> args
+        %{type: :client} -> Map.put(args, :conn_mod, Shadowsocks.Conn.Client)
+        %{type: :server} -> Map.put(args, :conn_mod, Shadowsocks.Conn.Server)
+      end
     GenServer.start_link(__MODULE__, args)
   end
 
@@ -64,10 +70,17 @@ defmodule Shadowsocks.Listener do
 
   def handle_call({:update, args}, _from, state(args: old_args)=state) do
     try do
-      args = Enum.filter(args, fn({k,_})-> :method==k or :password==k end)
+      args = Enum.filter(args, fn
+        {:method,_} -> true;
+        {:password,_} -> true;
+        {:conn_mod,_}->true;
+        _ -> false
+        end)
       |> Enum.into(old_args)
       |> validate_arg(:method, Shadowsocks.Encoder.methods())
       |> validate_arg(:password, &is_binary/1)
+      |> validate_arg(:conn_mod, &is_atom/1)
+
       {:reply, :ok, state(state, args: args)}
     rescue
       e in ArgumentError ->
