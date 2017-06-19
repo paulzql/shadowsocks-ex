@@ -79,7 +79,6 @@ defmodule Shadowsocks.Protocol do
   end
 
   def send_target(%Stream{encoder: encoder, ota: ota}=stream, {atyp, ipport}) do
-    data =
     if ota do
       ota_atyp = atyp ||| @ota_flag
       hmac = :crypto.hmac(:sha, [encoder.enc_iv, encoder.key], [ota_atyp, ipport], @hmac_len)

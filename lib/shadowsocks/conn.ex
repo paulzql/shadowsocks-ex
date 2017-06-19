@@ -21,7 +21,7 @@ defmodule Shadowsocks.Conn do
 
     Shadowsocks.Event.open_conn(args[:port], self(), socket)
 
-    args[:conn_mod]
+    args[:type]
     |> apply(:init, [socket, Encoder.init(method, pass), parent, args])
   end
 
