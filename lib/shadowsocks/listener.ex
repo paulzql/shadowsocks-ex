@@ -22,36 +22,11 @@ defmodule Shadowsocks.Listener do
     Enum.into(args, %{}) |> start_link
   end
   def start_link(args) when is_map(args) do
-    args = Map.merge(@default_arg, args)
-    |> validate_arg(:port, :required)
-    |> validate_arg(:port, &is_integer/1)
-    |> validate_arg(:method, Shadowsocks.Encoder.methods())
-    |> validate_arg(:password, :required)
-    |> validate_arg(:password, &is_binary/1)
-    |> validate_arg(:type, :required)
-    |> validate_arg(:type, [:client, :server])
-    |> validate_arg(:ota, [true, false])
-    if args[:type] == :client do
-      args
-      |> validate_arg(:server, :required)
-      |> validate_arg(:server, &is_tuple/1)
-    end
-    args =
-      case args do
-        %{conn_mod: mod} when is_atom(mod) -> args
-        %{type: :client} -> Map.put(args, :conn_mod, Shadowsocks.Conn.Client)
-        %{type: :server} -> Map.put(args, :conn_mod, Shadowsocks.Conn.Server)
-      end
-      |> case do
-           %{server: {domain, port}}=m when is_binary(domain) ->
-             %{m | server: {String.to_charlist(domain), port}}
-           m ->
-             m
-         end
     GenServer.start_link(__MODULE__, args)
   end
 
   def init(args) do
+    args = merge_args(@default_arg, args)
     Process.flag(:trap_exit, true)
 
     opts = case args do
@@ -76,17 +51,7 @@ defmodule Shadowsocks.Listener do
 
   def handle_call({:update, args}, _from, state(args: old_args)=state) do
     try do
-      args = Enum.filter(args, fn
-        {:method,_} -> true;
-        {:password,_} -> true;
-        {:conn_mod,_}->true;
-        _ -> false
-        end)
-      |> Enum.into(old_args)
-      |> validate_arg(:method, Shadowsocks.Encoder.methods())
-      |> validate_arg(:password, &is_binary/1)
-      |> validate_arg(:conn_mod, &is_atom/1)
-
+      args = merge_args(old_args, args)
       {:reply, :ok, state(state, args: args)}
     rescue
       e in ArgumentError ->
@@ -149,6 +114,39 @@ defmodule Shadowsocks.Listener do
   end
   def terminate(_, state) do
     state
+  end
+
+  defp merge_args(old_args, args) do
+    Map.merge(old_args, args)
+    |> validate_arg(:port, :required)
+    |> validate_arg(:port, &is_integer/1)
+    |> validate_arg(:method, Shadowsocks.Encoder.methods())
+    |> validate_arg(:password, :required)
+    |> validate_arg(:password, &is_binary/1)
+    |> validate_arg(:type, &is_atom/1)
+    |> validate_arg(:ota, [true, false])
+    |> case do
+         %{type: :client}=m ->
+           m
+           |> validate_arg(:server, :required)
+           |> validate_arg(:server, &is_tuple/1)
+         m -> m
+       end
+    |> case do
+         %{type: :client}=m -> %{m | type: Shadowsocks.Conn.Client}
+         %{type: :server}=m -> %{m | type: Shadowsocks.Conn.Server}
+         %{type: mod}=m when is_atom(mod) ->
+           unless Code.ensure_compiled?(mod) do
+             raise ArgumentError, message: "bad arg type, need :client / :server / module"
+           end
+           m
+         _ -> raise ArgumentError, message: "bad arg type, need :client / :server / module"
+       end
+    |> case do
+         %{server: {domain, port}}=m when is_binary(domain) ->
+           %{m | server: {String.to_charlist(domain), port}}
+         m -> m
+       end
   end
 
   defp validate_arg(arg, key, :required) do

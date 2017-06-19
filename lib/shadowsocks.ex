@@ -10,7 +10,7 @@ defmodule Shadowsocks do
 
   the `args` is a keyword list, fields:
 
-    * `type` required `atom` - the listener type, `:client` or `:server`
+    * `type` required `atom` - the connection type, `:client` or `:server` or custom module name
     * `port` required `integer` - listen port
     * `ip`   optional `tuple` - listen ip, example: `{127,0,0,1}`
     * `method` optional `string` - encode method, default: `"aes-256-cfb"`
@@ -39,7 +39,7 @@ defmodule Shadowsocks do
 
   the `args` is a keyword list, fields:
 
-    * `type` required `atom` - the listener type, `:client` or `:server`
+    * `type` required `atom` - the connection type, `:client` or `:server` or custom module name
     * `port` required `integer` - listen port
     * `ip`   optional `tuple` - listen ip, example: `{127,0,0,1}`
     * `method` optional `string` - encode method, default: `"aes-256-cfb"`
@@ -55,8 +55,7 @@ defmodule Shadowsocks do
   update listener args
 
   the `args` is a keyword list, fields:
-    * `method` optional `string` - encode method
-    * `password` optional `string` - encode password
+    * **see `start(args)` method
   """
   def update(port, args) do
     case find_listener(port) do
