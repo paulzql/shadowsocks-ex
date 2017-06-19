@@ -42,6 +42,12 @@ defmodule Shadowsocks.Listener do
         %{type: :client} -> Map.put(args, :conn_mod, Shadowsocks.Conn.Client)
         %{type: :server} -> Map.put(args, :conn_mod, Shadowsocks.Conn.Server)
       end
+      |> case do
+           %{server: {domain, port}}=m when is_binary(domain) ->
+             %{m | server: {String.to_charlist(domain), port}}
+           m ->
+             m
+         end
     GenServer.start_link(__MODULE__, args)
   end
 

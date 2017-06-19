@@ -28,8 +28,8 @@ defmodule Shadowsocks.Protocol do
   end
 
   def recv_iv!(stream) do
-    {stream, iv} = Stream.recv!(stream, byte_size(stream.enc_iv))
-    %Stream{encoder: Encoder.init_decode(stream.encoder, iv)}
+    {_, iv} = Stream.recv!(stream.sock, byte_size(stream.encoder.enc_iv))
+    %Stream{stream | encoder: Encoder.init_decode(stream.encoder, iv), ota_iv: iv}
   end
 
   @doc """
@@ -78,13 +78,16 @@ defmodule Shadowsocks.Protocol do
     {atyp, ret}
   end
 
-  def send_target({atyp, ipport}, %Stream{encoder: encoder, ota: ota}=stream) do
+  def send_target(%Stream{encoder: encoder, ota: ota}=stream, {atyp, ipport}) do
+    data =
     if ota do
-      hmac = :crypto.hmac(:sha, [encoder.enc_iv, encoder.key], [atyp ||| @ota_flag, ipport], @hmac_len)
-      Stream.send!(stream, [atyp ||| @ota_flag, ipport, hmac])
-      |> struct(ota_iv: encoder.enc_iv)
+      ota_atyp = atyp ||| @ota_flag
+      hmac = :crypto.hmac(:sha, [encoder.enc_iv, encoder.key], [ota_atyp, ipport], @hmac_len)
+      %Stream{stream | ota: false}
+      |> Stream.send!(<<ota_atyp::8, ipport::binary, hmac::binary>>)
+      |> struct(ota: true)
     else
-      Stream.send!(stream, [atyp, ipport])
+      Stream.send!(stream, <<atyp::8, ipport::binary>>)
     end
   end
 

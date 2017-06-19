@@ -11,7 +11,6 @@ defmodule Shadowsocks.Conn do
   @tcp_opts [:binary, {:packet, :raw}, {:active, :false}, {:nodelay, true}, {:buffer, 16384}]
   @flow_report_limit 5 * 1024 * 1024
 
-
   def start_link(socket, args) do
     :proc_lib.start_link(__MODULE__, :init, [self(), socket, args])
   end
@@ -26,6 +25,11 @@ defmodule Shadowsocks.Conn do
     |> apply(:init, [socket, Encoder.init(method, pass), parent, args])
   end
 
+  @doc """
+  connect to {addr, port}
+  *args* conn config options
+  """
+  @spec connect!({charlist | tuple}, map) :: port
   def connect!({addr, port}, args) do
     case :gen_tcp.connect(addr, port, @tcp_opts) do
       {:ok, ssock} ->
@@ -37,6 +41,15 @@ defmodule Shadowsocks.Conn do
     end
   end
 
+  @doc """
+  make a proxy from `is` to `os`
+
+  `is` input stream
+  `os` output stream
+  `size` init data size (`size` will report to flow event)
+  `type` `:up` or `:down`, use to report flow event
+  """
+  @spec proxy_stream(port | struct, port | struct, pid, integer, :up | :down) :: any
   def proxy_stream(is, os, pid, size, type) when size >= @flow_report_limit do
     if type == :up do
       send pid, {:flow, self(), 0, size}
@@ -46,20 +59,17 @@ defmodule Shadowsocks.Conn do
     proxy_stream(is, os, pid, 0, type)
   end
   def proxy_stream(is, os, pid, size, type) do
-    receive do
-      _ -> :ok
-      after 0 -> :ok
-    end
     with {:ok, is, data} <- Shadowsocks.Stream.recv(is, 0),
          os <- Shadowsocks.Stream.async_send(os, data) do
       proxy_stream(is, os, pid, size+byte_size(data), type)
     else
-      _err ->
+      _e ->
       if type == :up do
         send pid, {:flow, self(), 0, size}
       else
         send pid, {:flow, self(), size, 0}
       end
+
       Shadowsocks.Conn.close(is)
       Shadowsocks.Conn.close(os)
     end
