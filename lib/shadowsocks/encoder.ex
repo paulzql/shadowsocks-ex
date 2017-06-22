@@ -4,6 +4,9 @@ defmodule Shadowsocks.Encoder do
 
   @methods %{
     "rc4-md5" => :rc4_md5,
+    "aes-128-ctr" => :aes_128_ctr,
+    "aes-192-ctr" => :aes_192_ctr,
+    "aes-256-ctr" => :aes_256_ctr,
     "aes-128-cfb" => :aes_128_cfb,
     "aes-192-cfb" => :aes_192_cfb,
     "aes-256-cfb" => :aes_256_cfb
@@ -11,6 +14,9 @@ defmodule Shadowsocks.Encoder do
 
   @key_iv_len %{
     rc4_md5: {16, 16},
+    aes_128_ctr: {16, 16},
+    aes_192_ctr: {24, 16},
+    aes_256_ctr: {32, 16},
     aes_128_cfb: {16, 16},
     aes_192_cfb: {24, 16},
     aes_256_cfb: {32, 16}
@@ -31,12 +37,7 @@ defmodule Shadowsocks.Encoder do
     %Encoder{encoder | dec_iv: iv, dec_stream: init_stream(method, key, iv)}
   end
 
-  # encode
-  # def encode(%Encoder{iv_sent: false, enc_iv: iv}=encoder, data) do
-  #   {encoder, enc_data} = %Encoder{encoder | iv_sent: true} |> encode(data)
-  #   {encoder, <<iv::binary, enc_data::binary>>}
-  # end
-  def encode(%Encoder{method: :rc4_md5, enc_stream: stream}=encoder, data) do
+  def encode(%Encoder{enc_stream: stream}=encoder, data) when stream != nil do
     {stream, enc_data} = :crypto.stream_encrypt(stream, data)
     {%Encoder{encoder | enc_stream: stream}, enc_data}
   end
@@ -53,17 +54,8 @@ defmodule Shadowsocks.Encoder do
     {%Encoder{encoder | enc_iv: iv, enc_rest: rest}, ret}
   end
 
-  # decode
-  # def decode(%Encoder{dec_iv: nil, dec_rest: rest, enc_iv: enc_iv, method: m, key: key}=encoder, data) do
-  #   ivlen = byte_size(enc_iv)
-  #   case <<rest::binary, data::binary>> do
-  #     <<iv::binary-size(ivlen), rest1::binary>> ->
-  #       decode(%Encoder{encoder | dec_stream: init_stream(m, key, iv), dec_iv: iv, dec_rest: <<>>}, rest1)
-  #     rest1 ->
-  #       {%Encoder{encoder | dec_rest: rest1}, <<>>}
-  #   end
-  # end
-  def decode(%Encoder{method: :rc4_md5, dec_stream: stream}=encoder, data) do
+
+  def decode(%Encoder{dec_stream: stream}=encoder, data) when stream != nil do
     {stream, dec_data} = :crypto.stream_decrypt(stream, data)
     {%Encoder{encoder | dec_stream: stream}, dec_data}
   end
@@ -96,6 +88,9 @@ defmodule Shadowsocks.Encoder do
   defp init_stream(:rc4_md5, key, iv) do
     :crypto.stream_init(:rc4, :crypto.hash(:md5, <<key::binary, iv::binary>>))
   end
+  defp init_stream(:aes_128_ctr, key, iv), do: :crypto.stream_init(:aes_ctr, key, iv)
+  defp init_stream(:aes_192_ctr, key, iv), do: :crypto.stream_init(:aes_ctr, key, iv)
+  defp init_stream(:aes_256_ctr, key, iv), do: :crypto.stream_init(:aes_ctr, key, iv)
   defp init_stream(_, _, _), do: nil
 end
 
