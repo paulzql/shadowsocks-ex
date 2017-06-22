@@ -6,7 +6,7 @@ A fast tunnel proxy that helps you bypass firewalls.
 
 Features:
 - TCP  support
-- UDP  support [TODO]
+- UDP  support (only server)
 - Client support
 - Server support
 - OTA    support
@@ -36,6 +36,7 @@ the `args` is a keyword list, fields:
  * `password` required `string` - encode password
  * `ota` optional `bool` - is force open one time auth, default: `false`
  * `server` optional `tuple` - required if `type` is `:client`, example: `{"la.ss.org", 8388}`
+ * `udp`   optional `bool` - enable udp relay (*experimental* only support server side)
 
 ### stop a listener
 

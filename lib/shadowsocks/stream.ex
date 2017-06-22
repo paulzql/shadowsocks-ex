@@ -57,7 +57,6 @@ defmodule Shadowsocks.Stream do
   *note* the size only can be 0 when OTA stream
   """
   def recv(%{ota: true, ota_id: id, ota_iv: iv, sock: sock, encoder: encoder}=stream, 0, timeout) do
-    IO.inspect id
     with {:ok, data1} <- wait_data(sock, 2, timeout),
          {encoder, <<len::16>>} <- Shadowsocks.Encoder.decode(encoder, data1),
          {:ok, data2} <- wait_data(sock, @hmac_len+len, timeout),

@@ -9,6 +9,7 @@ config :shadowsocks, :listeners,
       password: "pass",
       port: 8888,
       ota: false,
+      udp: true,
       ip: {127, 0, 0, 1},
       redirect_url: "http://ionet.cc"
     ],

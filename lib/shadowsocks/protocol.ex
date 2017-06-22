@@ -49,6 +49,38 @@ defmodule Shadowsocks.Protocol do
     end
   end
 
+  @doc """
+  unpack package
+  """
+  def unpack(<<@atyp_v4, ip1::8,ip2::8,ip3::8,ip4::8,port::16, rest::binary>>) do
+    {{ip1, ip2, ip3, ip4}, port, rest}
+  end
+  def unpack(<<@atyp_v6, ip::binary-size(16), port::16, rest::binary>>) do
+    {for(<<x::16 <- ip>>, do: x) |> List.to_tuple(), port, rest}
+  end
+  def unpack(<<@atyp_dom, len::8, ip::binary-size(len), port::16, rest::binary>>) do
+    {String.to_charlist(ip), port, rest}
+  end
+
+  @doc """
+  pack package
+  """
+  def pack(addr, port, data) when is_tuple(addr) do
+    addr =
+      :erlang.tuple_to_list(addr)
+      |> :erlang.list_to_binary
+    case length(addr) do
+      4 ->
+        <<@atyp_v4, addr::binary, port::16, data::binary>>
+      6 ->
+        <<@atyp_v6, addr::binary, port::16, data::binary>>
+    end
+  end
+  def pack(addr, port, data) when is_binary(addr) do
+    len = byte_size(addr)
+    <<@atyp_dom, len::8, addr::binary, port::16, data::binary>>
+  end
+
   ## ----------------------------------------------------------------------------------------------------
   ## client side  function for init protocol
   ## ----------------------------------------------------------------------------------------------------

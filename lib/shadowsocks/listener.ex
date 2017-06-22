@@ -3,7 +3,7 @@ defmodule Shadowsocks.Listener do
   require Shadowsocks.Event
   import Record
 
-  defrecordp :state, lsock: nil, args: nil, port: nil, up: 0, down: 0, flow_time: 0
+  defrecordp :state, lsock: nil, args: nil, port: nil, up: 0, down: 0, flow_time: 0, udp: nil
 
   @opts [:binary, {:backlog, 20},{:nodelay, true}, {:active, false}, {:packet, :raw},{:reuseaddr, true},{:send_timeout_close, true}, {:buffer, 16384}]
   @default_arg %{ota: false, method: "rc4-md5"}
@@ -35,15 +35,13 @@ defmodule Shadowsocks.Listener do
              _->
                @opts
            end
-    case :gen_tcp.listen(args.port, opts) do
-      {:ok, lsock} ->
-        case :prim_inet.async_accept(lsock, -1) do
-          {:ok, _} ->
-            Shadowsocks.Event.start_listener(args.port)
-            {:ok, state(lsock: lsock, args: args, port: args.port)}
-          {:error, error} ->
-            {:stop, error}
-        end
+
+    with {:ok, lsock} <- :gen_tcp.listen(args.port, opts),
+         {:ok, _} <- :prim_inet.async_accept(lsock, -1),
+         {:ok, udp_pid} <- start_udprelay(args) do
+      Shadowsocks.Event.start_listener(args.port)
+      {:ok, state(lsock: lsock, args: args, port: args.port, udp: udp_pid)}
+    else
       error ->
         {:stop, error}
     end
@@ -52,7 +50,16 @@ defmodule Shadowsocks.Listener do
   def handle_call({:update, args}, _from, state(args: old_args)=state) do
     try do
       args = merge_args(old_args, args)
-      {:reply, :ok, state(state, args: args)}
+      case {state(state, :udp), args} do
+        {nil, %{udp: true, type: :server}} ->
+          {:ok, pid} = start_udprelay(args)
+          {:reply, :ok, state(state, args: args, udp: pid)}
+        {pid, _} when is_pid(pid) ->
+          send pid, :stop
+          {:reply, :ok, state(state, args: args, udp: nil)}
+        _ ->
+          {:reply, :ok, state(state, args: args)}
+      end
     rescue
       e in ArgumentError ->
         {:reply, {:error, e}, state}
@@ -114,6 +121,13 @@ defmodule Shadowsocks.Listener do
   end
   def terminate(_, state) do
     state
+  end
+
+  defp start_udprelay(%{udp: true, type: Shadowsocks.Conn.Server}=args) do
+    Shadowsocks.UDPRelay.start_link(args)
+  end
+  defp start_udprelay(_) do
+    {:ok, nil}
   end
 
   defp merge_args(old_args, args) do
