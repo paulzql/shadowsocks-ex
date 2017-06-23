@@ -42,7 +42,7 @@ defmodule Shadowsocks.Mixfile do
 
   defp docs do
     [
-      main: "Shadowsocks",
+      main: "readme",
       extras: ["README.md"]
     ]
   end

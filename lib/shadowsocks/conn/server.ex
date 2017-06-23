@@ -1,6 +1,7 @@
 defmodule Shadowsocks.Conn.Server do
   alias Shadowsocks.Stream
-
+  @behaviour  Shadowsocks.Conn
+  
   def init(socket, encoder, parent, args) do
     # recv target and check ota
     {stream, addr} =

@@ -2,6 +2,8 @@ defmodule Shadowsocks.Encoder do
   alias Shadowsocks.Encoder
   defstruct method: nil,key: nil, enc_iv: nil, dec_iv: nil, enc_stream: nil, dec_stream: nil, enc_rest: <<>>, dec_rest: <<>>, type: :stream
 
+  @type t :: %Shadowsocks.Encoder{}
+
   # {method, {key_len, iv_len}, crypto_type}
   @methods %{
     "rc4-md5" => {:rc4_md5, {16, 16}, :stream},

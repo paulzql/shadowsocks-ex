@@ -1,5 +1,6 @@
 defmodule Shadowsocks.Conn.Client do
   alias Shadowsocks.Stream
+  @behaviour  Shadowsocks.Conn
 
   def init(socket, encoder, parent, args) do
     {atyp, data} = Shadowsocks.Protocol.recv_socks5(socket)

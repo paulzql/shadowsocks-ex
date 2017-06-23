@@ -1,6 +1,8 @@
 defmodule Shadowsocks.Conn.Http302 do
   alias Shadowsocks.Stream
 
+  @behaviour  Shadowsocks.Conn
+
   @timeout 10000
   @re_path ~r|([^ ]*) HTTP/1.1\r\n|
   @re_host ~r|\r\nHost: ([^\r\n]*)\r\n|
