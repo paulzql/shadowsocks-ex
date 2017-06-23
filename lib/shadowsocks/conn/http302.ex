@@ -15,7 +15,7 @@ defmodule Shadowsocks.Conn.Http302 do
         case get_url(stream) do
           {_stream, ^url} ->
             :ignore
-          {stream, url2} ->
+          {stream, _url2} ->
             write_302(stream, url)
         end
       _ -> :ignore

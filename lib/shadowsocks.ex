@@ -13,7 +13,7 @@ defmodule Shadowsocks do
     * `type` required `atom` - the connection type, `:client` or `:server` or custom module name
     * `port` required `integer` - listen port
     * `ip`   optional `tuple` - listen ip, example: `{127,0,0,1}`
-    * `method` optional `string` - encode method, default: `"aes-256-cfb"`
+    * `method` optional `string` - encode method, default: `"rc4-md5"`
     * `password` required `string` - encode password
     * `ota` optional `bool` - is force open one time auth, default: `false`
     * `server` optional `tuple` - required if `type` is `:client`, example: `{"la.ss.org", 8388}`

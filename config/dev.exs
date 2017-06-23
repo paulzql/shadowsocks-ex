@@ -3,12 +3,13 @@ use Mix.Config
 config :shadowsocks, :listeners,
   [
     [
-      type: Shadowsocks.Conn.Http302,
-      # type: :server,
-      method: "rc4-md5",
+      # type: Shadowsocks.Conn.Http302,
+      type: :server,
+      method: "aes-192-cfb",
       password: "pass",
       port: 8888,
       ota: false,
+      udp: true,
       ip: {127, 0, 0, 1},
       redirect_url: "http://ionet.cc"
     ],
