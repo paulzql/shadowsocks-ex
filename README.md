@@ -22,10 +22,27 @@ Encryption methods
 - aes-192-ctr
 - aes-256-ctr
 
+## Installation
+
+The package can be installed
+by adding `shadowsocks` to your list of dependencies in `mix.exs`:
+
+```elixir
+def deps do
+  [{:shadowsocks, "~> 0.2.1"}]
+end
+```
+
+## Documentation
+The online docs can
+be found at [https://hexdocs.pm/shadowsocks](https://hexdocs.pm/shadowsocks).
+
 ## Useage
 ### start a listener
 
-    Shadowsocks.start(args)
+```elixir
+Shadowsocks.start(args)
+```
 
 the `args` is a keyword list, fields:
 
@@ -40,13 +57,17 @@ the `args` is a keyword list, fields:
 
 ### stop a listener
 
-      Shadowsocks.stop(port)
+```elixir
+Shadowsocks.stop(port)
+```
 
   stop listener by listen port, always return `:ok`
 
 ### update listener args
 
-      Shadowsocks.update(port, args)
+```elixir
+Shadowsocks.update(port, args)
+```
 
   the `args` is a keyword list, *see `Shadowsocks.start/1` method*
 
@@ -101,19 +122,4 @@ events:
 {:conn, :connect, {port, pid, {ret, addr, port}}} # connect to remote addr result
 {:port, :flow, {port, down, up}}           # flow report on the port
 ```
-
-## Installation
-
-The package can be installed
-by adding `shadowsocks` to your list of dependencies in `mix.exs`:
-
-```elixir
-def deps do
-  [{:shadowsocks, "~> 0.2.1"}]
-end
-```
-
-## Documentation
-The online docs can
-be found at [https://hexdocs.pm/shadowsocks](https://hexdocs.pm/shadowsocks).
 
