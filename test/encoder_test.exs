@@ -41,8 +41,10 @@ defmodule EncoderTest do
   test "decode from other app" do
     origin = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
     e = Encoder.init("aes-256-cfb", "mypass")
-    {_, decoded} = Encoder.decode(e, File.read!("test/50F_aes256cfb.data"))
-
-    assert origin == decoded
+    <<d3::binary-size(20), d4::binary>> = File.read!("test/50F_aes256cfb.data")
+    {e, r3} = Encoder.decode(e, d3)
+    {_, r4} = Encoder.decode(e, d4)
+    IO.inspect r3
+    assert origin == <<r3::binary, r4::binary>>
   end
 end
