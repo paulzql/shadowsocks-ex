@@ -37,7 +37,7 @@ end
 The online docs can
 be found at [https://hexdocs.pm/shadowsocks](https://hexdocs.pm/shadowsocks).
 
-## Useage
+## Usage
 ### start a listener
 
 ```elixir
