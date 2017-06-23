@@ -6,7 +6,7 @@ defmodule Shadowsocks.Listener do
   defrecordp :state, lsock: nil, args: nil, port: nil, up: 0, down: 0, flow_time: 0, udp: nil
 
   @opts [:binary, {:backlog, 20},{:nodelay, true}, {:active, false}, {:packet, :raw},{:reuseaddr, true},{:send_timeout_close, true}, {:buffer, 16384}]
-  @default_arg %{ota: false, method: "rc4-md5"}
+  @default_arg %{ota: false, method: "rc4-md5", udp: false, type: :server}
   @min_flow 5 * 1024 * 1024
   @min_time 60 * 1000
 
