@@ -28,9 +28,7 @@ defmodule Shadowsocks do
 
       Shadowsocks.update(port, args)
 
-  the `args` is a keyword list, fields:
-    * `method` optional `string` - encode method
-    * `password` optional `string` - encode password
+  the `args` is a keyword list, *see `Shadowsocks.start/1` method*
 
   """
 
@@ -54,8 +52,7 @@ defmodule Shadowsocks do
   @doc """
   update listener args
 
-  the `args` is a keyword list, fields:
-    * **see `start(args)` method
+  the `args` is a keyword list, *see `Shadowsocks.start/1` method*
   """
   def update(port, args) do
     case find_listener(port) do

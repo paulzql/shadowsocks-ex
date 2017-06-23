@@ -1,13 +1,21 @@
 defmodule Shadowsocks.Mixfile do
   use Mix.Project
 
+  @url "https://github.com/paulzql/shadowsocks-ex"
+
   def project do
     [app: :shadowsocks,
-     version: "0.2.0",
-     elixir: "~> 1.4-rc",
+     version: "0.2.1",
+     elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
-     deps: deps()]
+     deps: deps(),
+     description: "elixir port of shadowsocks",
+     source_url: @url,
+     homepage_url: @url,
+     name: "shadowsocks",
+     docs: docs(),
+     package: package()]
   end
 
   # Configuration for the OTP application
@@ -29,6 +37,21 @@ defmodule Shadowsocks.Mixfile do
   #
   # Type "mix help deps" for more examples and options
   defp deps do
-    [{:exprof, "~> 0.2.0", only: :dev}]
+    [{:ex_doc, "~> 0.14", only: :dev, runtime: false}]
+  end
+
+  defp docs do
+    [
+      main: "Shadowsocks",
+      extras: ["README.md"]
+    ]
+  end
+
+  defp package do
+    %{
+      maintainers: ["Paul Zhou"],
+      licenses: ["BSD 3-Clause"],
+      links: %{"Github" => @url}
+    }
   end
 end

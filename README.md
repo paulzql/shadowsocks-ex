@@ -48,7 +48,7 @@ the `args` is a keyword list, fields:
 
       Shadowsocks.update(port, args)
 
-  the `args` is a keyword list, *see `Shadowsocks.start(args)` method*
+  the `args` is a keyword list, *see `Shadowsocks.start/1` method*
 
 
 ## Configuration
@@ -104,16 +104,16 @@ events:
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
+The package can be installed
 by adding `shadowsocks` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
-  [{:shadowsocks, "~> 0.1.0"}]
+  [{:shadowsocks, "~> 0.2.1"}]
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
+## Documentation
+The online docs can
 be found at [https://hexdocs.pm/shadowsocks](https://hexdocs.pm/shadowsocks).
 
