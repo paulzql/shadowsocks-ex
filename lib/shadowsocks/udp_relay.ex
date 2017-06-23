@@ -20,7 +20,6 @@ defmodule Shadowsocks.UDPRelay do
   defp loop(lsock, encoder, parent) do
     receive do
       {:udp, ^lsock, caddr, cport, data} ->
-        IO.inspect "get udp data"
         pid =
           case Process.get({caddr, cport}) do
             nil ->
