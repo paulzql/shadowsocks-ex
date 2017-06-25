@@ -38,6 +38,14 @@ defmodule Shadowsocks do
   the `args` is a keyword list, fields:
 
     * `type` required `atom` - the connection type, `:client` or `:server` or custom module name
+
+      There are currently four built-in `type`:
+
+      1. `Shadowsocks.Conn.Client` - general client, alias is `:client`
+      2. `Shadowsocks.Conn.Server` - general server, alias is `:server`
+      3. `Shadowsocks.Conn.TransparentClient` - transparent client, perfect with iptables
+      4. `Shadowsocks.Conn.HTTP302` - redirect any http get request to `:redirect_url`, otherwise drop connections
+
     * `port` required `integer` - listen port
     * `ip`   optional `tuple` - listen ip, example: `{127,0,0,1}`
     * `method` optional `string` - encode method, default: `"aes-256-cfb"`
