@@ -11,7 +11,7 @@ Features:
 - Server support
 - OTA    support
 - Mulit user support
-
+- Transparent Proxy Client support
 
 Encryption methods
 - rc4-md5
@@ -29,7 +29,7 @@ by adding `shadowsocks` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
-  [{:shadowsocks, "~> 0.2.1"}]
+  [{:shadowsocks, "~> 0.2.2"}]
 end
 ```
 
@@ -47,6 +47,14 @@ Shadowsocks.start(args)
 the `args` is a keyword list, fields:
 
  * `type` required `atom` - the connection type, `:client` or `:server` or custom module name
+    
+    There are currently four built-in `type`:
+    
+    1. `Shadowsocks.Conn.Client` - general client, alias is `:client`
+    2. `Shadowsocks.Conn.Server` - general server, alias is `:server`
+    3. `Shadowsocks.Conn.TransparentClient` - transparent client, perfect with iptables
+    4. `Shadowsocks.Conn.HTTP302` - redirect any http get request to `:redirect_url`, otherwise drop connections
+    
  * `port` required `integer` - listen port
  * `ip`   optional `tuple` - listen ip, example: `{127,0,0,1}`
  * `method` optional `string` - encode method, default: `"rc4-md5"`
@@ -74,7 +82,7 @@ Shadowsocks.update(port, args)
 
 ## Configuration
 
-**startup listeners example:**
+### startup listeners example:
 
 ```elixir
 config :shadowsocks, :listeners,
@@ -106,6 +114,17 @@ config :shadowsocks, :listeners,
       ip: {127, 0, 0, 1}
     ],
   ]
+
+```
+
+
+### compile time configs
+
+```elixir
+config :shadowsocks, :report,
+    port_min_flow: 5 * 1024 * 1024, # report flow when cached flow exceed :port_min_flow
+    port_min_time: 60 * 1000,       # report flow when cached flow after :port_min_time
+    conn_min_flow: 5 * 1024 * 1024  # send flow to listener when cached flow exceed :conn_min_flow
 
 ```
 

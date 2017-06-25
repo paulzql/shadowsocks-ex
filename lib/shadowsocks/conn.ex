@@ -11,10 +11,15 @@ defmodule Shadowsocks.Conn do
   """
   @callback init(socket :: port, encoder :: Encoder.t, parent :: pid, args :: map) :: any
 
-  defrecordp :state, csock: nil, ssock: nil, ota: nil, port: nil, encoder: nil, down: 0, up: 0, sending: 0, ota_data: <<>>, ota_len: 0, ota_id: 0, ota_iv: <<>>, type: :server, server: nil, c2s_handler: nil, s2c_handler: nil, parent: nil
+  defrecordp :state, csock: nil, ssock: nil, ota: nil, port: nil, encoder: nil,
+                     down: 0, up: 0, sending: 0, ota_data: <<>>, ota_len: 0, ota_id: 0, ota_iv: <<>>,
+                     type: :server, server: nil, c2s_handler: nil, s2c_handler: nil, parent: nil
 
-  @tcp_opts [:binary, {:packet, :raw}, {:active, :false}, {:nodelay, true}, {:buffer, 16384}]
-  @flow_report_limit 5 * 1024 * 1024
+  @tcp_opts [:binary, {:packet, :raw}, {:active, :false},
+             {:nodelay, true}, {:buffer, 16384}]
+
+  @flow_report_limit Application.get_env(:shadowsocks, :report, [])
+                     |> Keyword.get(:port_min_flow, 5 * 1024 * 1024)
 
   def start_link(socket, args) do
     :proc_lib.start_link(__MODULE__, :init, [self(), socket, args])

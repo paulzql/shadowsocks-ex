@@ -3,12 +3,19 @@ defmodule Shadowsocks.Listener do
   require Shadowsocks.Event
   import Record
 
-  defrecordp :state, lsock: nil, args: nil, port: nil, up: 0, down: 0, flow_time: 0, udp: nil
+  defrecordp :state, lsock: nil, args: nil, port: nil,
+                     up: 0, down: 0, flow_time: 0, udp: nil
 
-  @opts [:binary, {:backlog, 20},{:nodelay, true}, {:active, false}, {:packet, :raw},{:reuseaddr, true},{:send_timeout_close, true}, {:buffer, 16384}]
+  @opts [:binary, {:backlog, 20},{:nodelay, true},
+         {:active, false}, {:packet, :raw},{:reuseaddr, true},
+         {:send_timeout_close, true}, {:buffer, 16384}]
+
   @default_arg %{ota: false, method: "rc4-md5", udp: false, type: :server}
-  @min_flow 5 * 1024 * 1024
-  @min_time 60 * 1000
+
+  @min_flow Application.get_env(:shadowsocks, :report, [])
+            |> Keyword.get(:port_min_flow, 5 * 1024 * 1024)
+  @min_time Application.get_env(:shadowsocks, :report, [])
+            |> Keyword.get(:port_min_time, 60 * 1000)
 
   def update(pid, args) when is_list(args) do
     map_arg = for {k, v} <- args, do: {k,v}, into: %{}
