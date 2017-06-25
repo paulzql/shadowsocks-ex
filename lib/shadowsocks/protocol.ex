@@ -104,7 +104,7 @@ defmodule Shadowsocks.Protocol do
         @atyp_v6 -> exactly_recv(sock, 18)
         @atyp_dom ->
           <<domlen::8>> = exactly_recv(sock, 1)
-          [domlen, exactly_recv(sock, domlen+2)]
+          <<domlen::8, exactly_recv(sock, domlen+2)::binary>>
       end
     :ok = :gen_tcp.send(sock, <<0x05, 0x00, 0, 0x01, 0::32, 0::16>>)
     {atyp, ret}
