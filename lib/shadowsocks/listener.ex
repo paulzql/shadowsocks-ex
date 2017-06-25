@@ -10,6 +10,10 @@ defmodule Shadowsocks.Listener do
   @min_flow 5 * 1024 * 1024
   @min_time 60 * 1000
 
+  def update(pid, args) when is_list(args) do
+    map_arg = for {k, v} <- args, do: {k,v}, into: %{}
+    update(pid, map_arg)
+  end
   def update(pid, args) do
     GenServer.call pid, {:update, args}
   end
@@ -19,7 +23,8 @@ defmodule Shadowsocks.Listener do
   end
 
   def start_link(args) when is_list(args) do
-    Enum.into(args, %{}) |> start_link
+    map_arg = for {k, v} <- args, do: {k,v}, into: %{}
+    start_link(map_arg)
   end
   def start_link(args) when is_map(args) do
     GenServer.start_link(__MODULE__, args)
@@ -134,6 +139,8 @@ defmodule Shadowsocks.Listener do
     Map.merge(old_args, args)
     |> validate_arg(:port, :required)
     |> validate_arg(:port, &is_integer/1)
+    |> validate_arg(:method, :required)
+    |> downcase(:method)
     |> validate_arg(:method, Shadowsocks.Encoder.methods())
     |> validate_arg(:password, :required)
     |> validate_arg(:password, &is_binary/1)
@@ -181,4 +188,5 @@ defmodule Shadowsocks.Listener do
     end
     arg
   end
+  defp downcase(arg, key), do: Map.put(arg, key, String.downcase(arg[key]))
 end
