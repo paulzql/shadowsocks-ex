@@ -26,7 +26,6 @@ defmodule Shadowsocks.Encoder do
   def init(method, pass) do
     {method, kv_len, type} = @methods[method]
 
-    method = @methods[method]
     {key, iv} = gen_key_iv(kv_len, pass)
 
     %Shadowsocks.Encoder{method: method,
