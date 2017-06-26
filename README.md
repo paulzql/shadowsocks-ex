@@ -29,7 +29,7 @@ by adding `shadowsocks` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
-  [{:shadowsocks, "~> 0.2.2"}]
+  [{:shadowsocks, "~> 0.2.3"}]
 end
 ```
 
