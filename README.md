@@ -12,6 +12,7 @@ Features:
 - OTA    support
 - Mulit user support
 - Transparent Proxy Client support
+- Anti protocol detection
 
 Encryption methods
 - rc4-md5
@@ -125,7 +126,12 @@ config :shadowsocks, :report,
     port_min_flow: 5 * 1024 * 1024, # report flow when cached flow exceed :port_min_flow
     port_min_time: 60 * 1000,       # report flow when cached flow after :port_min_time
     conn_min_flow: 5 * 1024 * 1024  # send flow to listener when cached flow exceed :conn_min_flow
-
+    
+config :shadowsocks, :protocol,
+  recv_timeout: 180000,             # timeout for receive header
+  anti_max_time: 10000,             # anti max delay time (ms), random sleep time before close connection
+  anti_max_bytes: 500,              # anti max reply bytes, random bytes send to client
+  anti_detect: true                 # on / off anti protocol detection
 ```
 
 ## Connection Events
