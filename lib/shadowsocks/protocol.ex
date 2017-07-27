@@ -3,7 +3,18 @@ defmodule Shadowsocks.Protocol do
   use Bitwise
   alias Shadowsocks.Encoder
 
-  @recv_timeout 180000
+  @recv_timeout Application.get_env(:shadowsocks, :protocol, []) |> Keyword.get(:recv_timeout, 180000)
+
+  @anti_detect Application.get_env(:shadowsocks, :protocol, [])|> Keyword.get(:anti_detect, true)
+  @anti_max_time Application.get_env(:shadowsocks, :protocol, [])|> Keyword.get(:anti_max_time, 10000)
+  @anti_max_bytes Application.get_env(:shadowsocks, :protocol, [])|> Keyword.get(:anti_max_bytes, 500)
+
+  if @anti_detect and @anti_max_time <= 0 do
+    raise RuntimeError, message: "bad config: anti_max_time, must be grater than 1"
+  end
+  if @anti_detect and @anti_max_bytes <= 0 do
+    raise RuntimeError, message: "bad config: anti_max_bytes, must be grater than 1"
+  end
 
   @atyp_v4 0x01
   @atyp_v6 0x04
@@ -134,8 +145,31 @@ defmodule Shadowsocks.Protocol do
     {sock, ipport} = Stream.recv!(sock, domlen + 2)
     {sock, <<domlen, ipport::binary>>}
   end
+  if @anti_detect do
+    defp recv_addr(_, sock) do
+      anti_detect(sock)
+    end
+  end
 
   defp parse_addr(@atyp_v4, <<ip1::8,ip2::8,ip3::8,ip4::8,port::16>>), do: {{ip1,ip2,ip3,ip4}, port}
   defp parse_addr(@atyp_v6, <<ip::binary-size(16), port::16>>), do: {for(<<x::16 <- ip>>, do: x) |> List.to_tuple(), port}
   defp parse_addr(@atyp_dom, <<len::8, ip::binary-size(len), port::16>>), do: {String.to_charlist(ip), port}
+  if @anti_detect do
+    defp parse_addr(_, sock) do
+      anti_detect(sock)
+    end
+  end
+
+  if @anti_detect do
+    defp anti_detect(sock) do
+      delay = :rand.uniform(@anti_max_time)
+      :timer.sleep(delay)
+      if rem(delay, 2) == 0 do
+        trashs = :crypto.strong_rand_bytes(:rand.uniform(@anti_max_bytes))
+        Stream.send(sock, trashs)
+      end
+      exit(:normal)
+    end
+  end
+
 end

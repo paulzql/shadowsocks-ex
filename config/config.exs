@@ -23,10 +23,16 @@ use Mix.Config
 config :logger,
   handle_sasl_reports: true
 
-# config :shadowsocks, :report,
-#   port_min_flow: 5 * 1024 * 1024,
-#   port_min_time: 60 * 1000,
-#   conn_min_flow: 5 * 1024 * 1024
+config :shadowsocks, :report,
+  port_min_flow: 5 * 1024 * 1024,
+  port_min_time: 60 * 1000,
+  conn_min_flow: 5 * 1024 * 1024
+
+config :shadowsocks, :protocol,
+  recv_timeout: 180000,
+  anti_max_time: 10000,
+  anti_max_bytes: 500,
+  anti_detect: true
 
 # It is also possible to import configuration files, relative to this
 # directory. For example, you can emulate configuration per environment

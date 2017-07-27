@@ -5,12 +5,12 @@ config :shadowsocks, :listeners,
     [
       # type: Shadowsocks.Conn.Http302,
       type: :server,
-      method: "aes-192-cfb",
+      method: "aes-128-cfb",
       password: "pass",
       port: 8888,
       ota: false,
       udp: true,
-      ip: {127, 0, 0, 1},
+      ip: {0, 0, 0, 0},
       redirect_url: "http://ionet.cc"
     ],
     # [
