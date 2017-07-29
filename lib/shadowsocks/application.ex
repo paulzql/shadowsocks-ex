@@ -12,7 +12,7 @@ defmodule Shadowsocks.Application do
     children = [
       # Starts a worker by calling: Shadowsocks.Worker.start_link(arg1, arg2, arg3)
       # worker(Shadowsocks.Worker, [arg1, arg2, arg3]),
-      worker(GenEvent, [[name: Shadowsocks.Event]]),
+      worker(:gen_event, [{:local, Shadowsocks.Event}], modules: :dynamic),
       supervisor(Shadowsocks.ListenerSup, [])
     ]
 
