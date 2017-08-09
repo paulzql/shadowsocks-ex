@@ -5,7 +5,7 @@ defmodule Shadowsocks.Mixfile do
 
   def project do
     [app: :shadowsocks,
-     version: "0.3.0",
+     version: "0.3.1",
      elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
@@ -29,7 +29,7 @@ defmodule Shadowsocks.Mixfile do
 
   # Dependencies can be Hex packages:
   #
-  #   {:my_dep, "~> 0.3.0"}
+  #   {:my_dep, "~> 0.3"}
   #
   # Or git/path repositories:
   #

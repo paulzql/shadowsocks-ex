@@ -20,11 +20,13 @@ defmodule Shadowsocks.UDPRelay do
   defp loop(lsock, encoder, parent) do
     receive do
       {:udp, ^lsock, caddr, cport, data} ->
+        client = {caddr, cport}
         pid =
-          case Process.get({caddr, cport}) do
+          case Process.get(client) do
             nil ->
-              p = spawn(fn -> init_conn(lsock, encoder, parent) end)
-              Process.put({caddr, cport}, p)
+              {p,_} = spawn_monitor(fn -> init_conn(lsock, encoder, parent, client) end)
+              Process.put(client, p)
+              Process.put(p, client)
               p
             pid ->
               pid
@@ -35,13 +37,20 @@ defmodule Shadowsocks.UDPRelay do
         loop(lsock, encoder, parent)
       :stop ->
         :stop
+      {:DOWN, _, :process, pid, _} ->
+        with {addr, port} <- Process.get(pid) do
+          Process.delete(pid)
+          Process.delete({addr, port})
+        end
+        loop(lsock, encoder, parent)
       _ ->
         loop(lsock, encoder, parent)
     end
   end
 
-  defp init_conn(lsock, encoder, parent) do
-    conn_loop(lsock, encoder, %{parent: parent, down: 0, up: 0})
+  defp init_conn(lsock, encoder, parent, {addr, port}) do
+    {:ok, socket} = :gen_udp.open(0, [:binary, {:active, :once}])
+    conn_loop(lsock, encoder, %{parent: parent, down: 0, up: 0, socket: socket, addr: addr, port: port})
   end
 
   defp conn_loop(lsock, encoder, %{parent: pid, down: down, up: up})
@@ -57,22 +66,12 @@ defmodule Shadowsocks.UDPRelay do
           |> Encoder.decode_once(data)
           |> Shadowsocks.Protocol.unpack
 
-        socket =
-          case Process.get({addr, port}) do
-            nil ->
-              {:ok, socket} = :gen_udp.open(0, [:binary, {:active, :once}])
-              Process.put({addr, port}, socket)
-              socket
-            socket ->
-              socket
-          end
-
-        :gen_udp.send(socket, addr, port, data)
+        :gen_udp.send(arg.socket, addr, port, data)
         conn_loop(lsock, encoder, arg)
 
       {:udp, sock, addr, port, data} ->
         data = Shadowsocks.Protocol.pack(addr, port, data)
-        :gen_udp.send(lsock, addr, port, Encoder.encode_once(encoder, data))
+        :gen_udp.send(lsock, arg.addr, arg.port, Encoder.encode_once(encoder, data))
         :inet.setopts(sock, active: :once)
         conn_loop(lsock, encoder, arg)
 

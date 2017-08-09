@@ -80,7 +80,7 @@ defmodule Shadowsocks.Protocol do
     addr =
       :erlang.tuple_to_list(addr)
       |> :erlang.list_to_binary
-    case length(addr) do
+    case byte_size(addr) do
       4 ->
         <<@atyp_v4, addr::binary, port::16, data::binary>>
       6 ->
