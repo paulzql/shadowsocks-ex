@@ -37,6 +37,8 @@ defmodule Shadowsocks.UDPRelay do
         loop(lsock, encoder, parent)
       :stop ->
         :stop
+      {:update, method, password} ->
+        loop(lsock, Encoder.init(method, password), parent)
       {:DOWN, _, :process, pid, _} ->
         with {addr, port} <- Process.get(pid) do
           Process.delete(pid)

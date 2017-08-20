@@ -62,15 +62,19 @@ defmodule Shadowsocks.Listener do
   def handle_call({:update, args}, _from, state(args: old_args)=state) do
     try do
       args = merge_args(old_args, args)
+      # update udp
       case {state(state, :udp), args} do
-        {nil, %{udp: true, type: :server}} ->
+        {nil, %{udp: true}} ->
           {:ok, pid} = start_udprelay(args)
           {:reply, :ok, state(state, args: args, udp: pid)}
-        {pid, _} when is_pid(pid) ->
+        {nil, %{udp: false}} ->
+          {:reply, :ok, state(state, args: args)}
+        {pid, %{udp: true}} when is_pid(pid) ->
+          send pid, {:update, args[:method], args[:password]}
+          {:reply, :ok, state(state, args: args)}
+        {pid, %{udp: false}} when is_pid(pid) ->
           send pid, :stop
           {:reply, :ok, state(state, args: args, udp: nil)}
-        _ ->
-          {:reply, :ok, state(state, args: args)}
       end
     rescue
       e in ArgumentError ->
@@ -135,7 +139,7 @@ defmodule Shadowsocks.Listener do
     state
   end
 
-  defp start_udprelay(%{udp: true, type: Shadowsocks.Conn.Server}=args) do
+  defp start_udprelay(%{udp: true}=args) do
     Shadowsocks.UDPRelay.start_link(args)
   end
   defp start_udprelay(_) do
