@@ -142,7 +142,7 @@ events:
 
 ```elixir
 {:port, :open, port}                       # when start listener on port
-{:conn, :open, {port, pid, {addr, port}}}  # when received connection request
+{:conn, :open, {port, pid, addr}}  # when received connection request
 {:conn, :close, {port, pid, reason, flow}} # when connection process exited
 {:conn, :connect, {port, pid, {ret, addr, port}}} # connect to remote addr result
 {:port, :flow, {port, down, up}}           # flow report on the port

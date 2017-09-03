@@ -20,10 +20,10 @@ defmodule Shadowsocks.Event do
     end
   end
 
-  defmacro connect(port, info) do
+  defmacro connect(port, pid, info) do
     quote do
       Logger.debug "#{inspect unquote(info)}"
-      :gen_event.notify(Shadowsocks.Event, {:conn, :connect, {unquote(port), unquote(self()), unquote(info)}})
+      :gen_event.notify(Shadowsocks.Event, {:conn, :connect, {unquote(port), unquote(pid), unquote(info)}})
     end
   end
 

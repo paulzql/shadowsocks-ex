@@ -43,10 +43,10 @@ defmodule Shadowsocks.Conn do
   def connect!({addr, port}, args) do
     case :gen_tcp.connect(addr, port, @tcp_opts) do
       {:ok, ssock} ->
-        Shadowsocks.Event.connect(args[:port],{:ok, addr, port})
+        Shadowsocks.Event.connect(args[:port], self(), {:ok, addr, port})
         ssock
       error ->
-        Shadowsocks.Event.connect(args[:port],{error, addr, port})
+        Shadowsocks.Event.connect(args[:port], self(), {error, addr, port})
         exit(error)
     end
   end
