@@ -10,13 +10,21 @@ defmodule Shadowsocks.Conn.Server do
 
     ssock = Shadowsocks.Conn.connect!(addr, args)
 
-    spawn(fn ->
+    conn_pid = self()
+    pid = spawn(fn ->
       stream
       |> Shadowsocks.Protocol.send_iv!()
-      |> Shadowsocks.Conn.proxy_stream(ssock, parent, 0, :up)
+      |> Shadowsocks.Conn.proxy_stream(ssock, parent, 0, :up, conn_pid)
     end)
 
-    Shadowsocks.Conn.proxy_stream(ssock, %Stream{stream | ota: false}, parent, 0, :down)
+    Shadowsocks.Conn.proxy_stream(ssock, %Stream{stream | ota: false}, parent, 0, :down, conn_pid)
+    ref = Process.monitor(pid)
+    receive do
+      {:DOWN, ^ref, _, _, _} ->
+        :ok
+    after 1000 ->
+        :ok
+    end
   end
 
 end

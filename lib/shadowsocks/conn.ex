@@ -59,25 +59,27 @@ defmodule Shadowsocks.Conn do
   `size` init data size (`size` will report to flow event)
   `type` `:up` or `:down`, use to report flow event
   """
+  def proxy_stream(is, os, pid, size, type), do: proxy_stream(is, os, pid, size, type, self())
+
   @spec proxy_stream(port | struct, port | struct, pid, integer, :up | :down) :: any
-  def proxy_stream(is, os, pid, size, type) when size >= @flow_report_limit do
+  def proxy_stream(is, os, pid, size, type, who) when size >= @flow_report_limit do
     if type == :up do
-      send pid, {:flow, self(), 0, size}
+      send pid, {:flow, who, 0, size}
     else
-      send pid, {:flow, self(), size, 0}
+      send pid, {:flow, who, size, 0}
     end
-    proxy_stream(is, os, pid, 0, type)
+    proxy_stream(is, os, pid, 0, type, who)
   end
-  def proxy_stream(is, os, pid, size, type) do
+  def proxy_stream(is, os, pid, size, type, who) do
     with {:ok, is, data} <- Shadowsocks.Stream.recv(is, 0),
          os <- Shadowsocks.Stream.async_send(os, data) do
-      proxy_stream(is, os, pid, size+byte_size(data), type)
+      proxy_stream(is, os, pid, size+byte_size(data), type, who)
     else
       _e ->
       if type == :up do
-        send pid, {:flow, self(), 0, size}
+        send pid, {:flow, who, 0, size}
       else
-        send pid, {:flow, self(), size, 0}
+        send pid, {:flow, who, size, 0}
       end
 
       Shadowsocks.Conn.close(is)
