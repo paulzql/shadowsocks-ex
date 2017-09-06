@@ -9,8 +9,16 @@ defmodule Shadowsocks.UDPRelay do
     :proc_lib.start_link(__MODULE__, :init, [self(), args])
   end
 
-  def init(parent, %{method: method, password: pass, port: port}) do
-    {:ok, socket} = :gen_udp.open(port, [:binary, {:active, :once}])
+  def init(parent, %{method: method, password: pass, port: port}=args) do
+    opts = case args do
+             %{ip: ip} when is_tuple(ip) and tuple_size(ip) == 4 ->
+               [:binary, {:active, :once}, {:ip, ip}]
+             %{ip: ip} when is_tuple(ip) and tuple_size(ip) == 8 ->
+               [:binary, {:active, :once}, {:ip, ip}, :inet6]
+             _ ->
+               [:binary, {:active, :once}, :inet6]
+           end
+    {:ok, socket} = :gen_udp.open(port, opts)
 
     :proc_lib.init_ack({:ok, self()})
 

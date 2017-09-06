@@ -42,10 +42,12 @@ defmodule Shadowsocks.Listener do
     Process.flag(:trap_exit, true)
 
     opts = case args do
-             %{ip: ip} ->
+             %{ip: ip} when is_tuple(ip) and tuple_size(ip) == 4 ->
                [{:ip, ip}|@opts]
+             %{ip: ip} when is_tuple(ip) and tuple_size(ip) == 8 ->
+               [{:ip, ip}, :inet6 | @opts]
              _->
-               @opts
+               [:inet6 | @opts]
            end
 
     with {:ok, lsock} <- :gen_tcp.listen(args.port, opts),
@@ -109,19 +111,16 @@ defmodule Shadowsocks.Listener do
   def handle_info({:inet_async, _lsock, _ref, error}, state) do
     {:stop, error, state}
   end
-
-  def handle_info({:flow, pid, down, up}, state(up: pup,down: pdown, flow_time: ft)=s) do
+  # UDP
+  def handle_info({:flow, down, up}, state) do
+    {:noreply, save_flow(down, up, state)}
+  end
+  # TCP
+  def handle_info({:flow, pid, down, up}, state) do
     with {old_down, old_up} <- Process.get(pid) do
       Process.put(pid, {old_down+down, old_up+up})
     end
-    tick = System.system_time(:milliseconds)
-    case {pup+up, pdown+down} do
-      {u, d} when u > @min_flow or d > @min_flow or tick - ft > @min_time ->
-        Shadowsocks.Event.flow(state(s, :port), d, u)
-        {:noreply, state(s, up: 0, down: 0, flow_time: tick)}
-      {u,d} ->
-        {:noreply, state(s, up: u, down: d)}
-    end
+    {:noreply, save_flow(down, up, state)}
   end
 
   def handle_info({:EXIT, pid, reason}, state(port: port)=state) do
@@ -131,12 +130,27 @@ defmodule Shadowsocks.Listener do
     end
     {:noreply, state}
   end
+  def handle_info(msg, state) do
+    IO.puts "bad message: #{inspect msg}"
+    {:noreply, state}
+  end
 
   def terminate(_, state(port: port, up: up, down: down)) when up > 0 and down > 0 do
     Shadowsocks.Event.sync_flow(port, down, up)
   end
   def terminate(_, state) do
     state
+  end
+
+  defp save_flow(down, up, state(up: pup, down: pdown, flow_time: ft)=s) do
+    tick = System.system_time(:milliseconds)
+    case {pup+up, pdown+down} do
+      {u, d} when u > @min_flow or d > @min_flow or tick - ft > @min_time ->
+        Shadowsocks.Event.flow(state(s, :port), d, u)
+        state(s, up: 0, down: 0, flow_time: tick)
+      {u,d} ->
+        state(s, up: u, down: d)
+    end
   end
 
   defp start_udprelay(%{udp: true}=args) do
