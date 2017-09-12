@@ -45,6 +45,9 @@ defmodule Shadowsocks.Stream do
   def async_send(sock, data) do
     try do
       :erlang.port_command(sock, data, [])
+    rescue
+      _e in ArgumentError ->
+        Kernel.send self(), {:error, sock}
     catch
       _ ->
         Kernel.send self(), {:error, sock}
