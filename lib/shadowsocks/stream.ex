@@ -1,5 +1,5 @@
 defmodule Shadowsocks.Stream do
-  defstruct sock: nil, encoder: nil, ota_iv: nil, ota_id: 0, ota: false
+  defstruct sock: nil, encoder: nil, recv_rest: {<<>>, 0}, ota_iv: nil, ota_id: 0, ota: false
 
   @recv_timeout 180000
   @hmac_len 10
@@ -60,6 +60,7 @@ defmodule Shadowsocks.Stream do
   *note* the size only can be 0 when OTA stream
   """
   def recv(%{ota: true, ota_id: id, ota_iv: iv, sock: sock, encoder: encoder}=stream, 0, timeout) do
+    %Shadowsocks.Stream{recv_rest: {_, 0}} = stream
     with {:ok, data1} <- wait_data(sock, 2, timeout),
          {encoder, <<len::16>>} <- Shadowsocks.Encoder.decode(encoder, data1),
          {:ok, data2} <- wait_data(sock, @hmac_len+len, timeout),
@@ -73,10 +74,18 @@ defmodule Shadowsocks.Stream do
         {:error, stream, :hmac}
     end
   end
-  def recv(%{sock: sock, encoder: encoder}=stream, size, timeout) do
-    with {:ok, data} <- wait_data(sock, size, timeout),
+  def recv(%{sock: sock, encoder: encoder, recv_rest: {acc, acc_size}}=stream, size, timeout)
+  when acc_size > 0 and acc_size >= size do
+    cond do
+      size > 0 -> <<data::binary-size(size), acc::binary>> = IO.iodata_to_binary(acc)
+      true     -> {data, acc} = {IO.iodata_to_binary(acc), <<>>}
+    end
+    {:ok, %Shadowsocks.Stream{stream | recv_rest: {acc, byte_size(acc)}}, data}
+  end
+  def recv(%{sock: sock, encoder: encoder, recv_rest: {acc, acc_size}}=stream, size, timeout) do
+    with {:ok, data} <- wait_data(sock, size - acc_size, timeout),
          {encoder, data} <- Shadowsocks.Encoder.decode(encoder, data) do
-      {:ok, %Shadowsocks.Stream{stream | encoder: encoder}, data}
+      recv(%Shadowsocks.Stream{stream | encoder: encoder, recv_rest: {[acc, data], acc_size + byte_size(data)}}, size)
     else
       {:error, err} ->
         {:error, stream, err}
