@@ -22,6 +22,9 @@ Encryption methods
 - aes-128-ctr
 - aes-192-ctr
 - aes-256-ctr
+- aes-128-gcm
+- aes-192-gcm
+- aes-256-gcm
 
 ## Installation
 
@@ -62,7 +65,7 @@ the `args` is a keyword list, fields:
  * `password` required `string` - encode password
  * `ota` optional `bool` - is force open one time auth, default: `false`
  * `server` optional `tuple` - required if `type` is `:client`, example: `{"la.ss.org", 8388}`
- * `udp`   optional `bool` - enable udp relay (*experimental* only support server side)
+ * `udp`   optional `bool` - enable udp relay (only support server side)
 
 ### stop a listener
 
@@ -103,7 +106,7 @@ config :shadowsocks, :listeners,
       port: 8889,
       ota: false,
       ip: {0, 0, 0, 0},
-      redirect_url: "http://ionet.cc"
+      redirect_url: "https://google.com"
     ],
     [
       type: :client,
