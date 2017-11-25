@@ -14,9 +14,9 @@ defmodule Shadowsocks.Encoder do
     "aes-128-cfb" => {:aes_128_cfb, {16, 16}, :block},
     "aes-192-cfb" => {:aes_192_cfb, {24, 16}, :block},
     "aes-256-cfb" => {:aes_256_cfb, {32, 16}, :block},
-    "aead-aes-128-gcm" => {:aead_aes_128_gcm, {16, 16}, :aead},
-    "aead-aes-192-gcm" => {:aead_aes_192_gcm, {24, 24}, :aead},
-    "aead-aes-256-gcm" => {:aead_aes_256_gcm, {32, 32}, :aead}
+    "aes-128-gcm" => {:aead_aes_128_gcm, {16, 16}, :aead},
+    "aes-192-gcm" => {:aead_aes_192_gcm, {24, 24}, :aead},
+    "aes-256-gcm" => {:aead_aes_256_gcm, {32, 32}, :aead}
   }
 
   @aead_tag_len   16
