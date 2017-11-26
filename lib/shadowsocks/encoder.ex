@@ -91,7 +91,7 @@ defmodule Shadowsocks.Encoder do
   end
   defp encode_aead(state,  data, len, res_data_acc) do
     {chunk_data, chunk_len, rest_data} = cond do
-      len > 0x4000 ->
+      len > 0x3FFF ->
         << long_chunk_data::binary-size(0x3FFF), long_rest_data::binary >> = IO.iodata_to_binary(data)
         {long_chunk_data, 0x3FFF, long_rest_data}
       true ->
