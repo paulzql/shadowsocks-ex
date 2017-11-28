@@ -9,6 +9,7 @@ defmodule Shadowsocks.Listener do
   @opts [:binary, {:backlog, 20},{:nodelay, true},
          {:active, false}, {:packet, :raw},{:reuseaddr, true},
          {:send_timeout_close, true}, {:buffer, 16384}]
+  @tcp_fastopen_queue_length 5
 
   @default_arg %{ota: false, method: "rc4-md5", udp: false, type: :server}
 
@@ -16,6 +17,10 @@ defmodule Shadowsocks.Listener do
             |> Keyword.get(:port_min_flow, 5 * 1024 * 1024)
   @min_time Application.get_env(:shadowsocks, :report, [])
             |> Keyword.get(:port_min_time, 60 * 1000)
+
+  # constants
+  @sol_tcp 6
+  @tcp_fastopen_linux 23
 
   def update(pid, args) when is_list(args) do
     map_arg = for {k, v} <- args, do: {k,v}, into: %{}
@@ -51,6 +56,7 @@ defmodule Shadowsocks.Listener do
            end
 
     with {:ok, lsock} <- :gen_tcp.listen(args.port, opts),
+         _ <- enable_tcp_fastopen(lsock),
          {:ok, _} <- :prim_inet.async_accept(lsock, -1),
          {:ok, udp_pid} <- start_udprelay(args) do
       Shadowsocks.Event.start_listener(args.port)
@@ -88,7 +94,9 @@ defmodule Shadowsocks.Listener do
     {:reply, port, state}
   end
 
-  def handle_info({:inet_async, _, _, {:ok, csock}}, state) do
+  def handle_info({:inet_async, lsock, _, {:ok, csock}}, state) do
+    {:ok, opts} = :inet.getopts(lsock, [:active, :nodelay, :keepalive, :delay_send, :priority, :tos])
+    :ok = :inet.setopts(csock, opts)
     true = :inet_db.register_socket(csock, :inet_tcp)
     {:ok, pid} = Shadowsocks.Conn.start_link(csock, state(state, :args))
     Process.put(pid, {0, 0})
@@ -158,6 +166,19 @@ defmodule Shadowsocks.Listener do
   end
   defp start_udprelay(_) do
     {:ok, nil}
+  end
+
+  defp enable_tcp_fastopen(lsock) do
+    try do
+      case :os.type do
+        {:unix, :linux} ->
+          :inet.setopts(lsock, [{:raw, @sol_tcp, @tcp_fastopen_linux, <<@tcp_fastopen_queue_length::native-32>>}]);
+        os ->
+          {:error, {:unknown_os, os}}
+      end
+    catch
+      _, err -> {:error, err}
+    end
   end
 
   defp merge_args(old_args, args) do
