@@ -74,12 +74,15 @@ defmodule Shadowsocks.Stream do
         {:error, stream, :hmac}
     end
   end
-  def recv(%{sock: sock, encoder: encoder, recv_rest: {acc, acc_size}}=stream, size, timeout)
+  def recv(%{sock: _sock, encoder: _encoder, recv_rest: {acc, acc_size}}=stream, size, _timeout)
   when acc_size > 0 and acc_size >= size do
-    cond do
-      size > 0 -> <<data::binary-size(size), acc::binary>> = IO.iodata_to_binary(acc)
-      true     -> {data, acc} = {IO.iodata_to_binary(acc), <<>>}
-    end
+    {data, acc} =
+      cond do
+        size > 0 ->
+          <<data::binary-size(size), acc::binary>> = IO.iodata_to_binary(acc)
+          {data, acc}
+        true -> {IO.iodata_to_binary(acc), <<>>}
+      end
     {:ok, %Shadowsocks.Stream{stream | recv_rest: {acc, byte_size(acc)}}, data}
   end
   def recv(%{sock: sock, encoder: encoder, recv_rest: {acc, acc_size}}=stream, size, timeout) do

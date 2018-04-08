@@ -3,7 +3,7 @@ defmodule Shadowsocks.Conn.Client do
   @behaviour  Shadowsocks.Conn
 
   def init(socket, encoder, parent, args) do
-    {atyp, data} = Shadowsocks.Protocol.recv_socks5(socket)
+    {atyp, data} = Shadowsocks.Protocol.recv_http_or_socks5(socket)
 
     ssock = Shadowsocks.Conn.connect!(args[:server], args)
 

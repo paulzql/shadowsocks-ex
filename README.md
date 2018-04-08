@@ -7,7 +7,7 @@ A fast tunnel proxy that helps you bypass firewalls.
 Features:
 - TCP  support
 - UDP  support (only server)
-- Client support
+- Client support (socks5 and http proxy)
 - Server support
 - OTA    support
 - Mulit user support

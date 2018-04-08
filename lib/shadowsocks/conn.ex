@@ -1,5 +1,4 @@
 defmodule Shadowsocks.Conn do
-  use GenServer
   use Bitwise
   require Shadowsocks.Event
   require Logger

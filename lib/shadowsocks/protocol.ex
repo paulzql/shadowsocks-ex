@@ -96,11 +96,44 @@ defmodule Shadowsocks.Protocol do
   ## client side  function for init protocol
   ## ----------------------------------------------------------------------------------------------------
 
+  def recv_http_or_socks5(sock) do
+    # only support socks5 or http proxy, otherwise boom!!!
+    case exactly_recv(sock, 1) do
+      <<0x05>> -> recv_socks5(sock)
+      <<?C>> -> recv_http(sock)
+    end
+  end
+
+  def send_target(%Stream{encoder: encoder, ota: ota}=stream, {atyp, ipport}) do
+    if ota do
+      ota_atyp = atyp ||| @ota_flag
+      hmac = :crypto.hmac(:sha, [encoder.enc_iv, encoder.key], [ota_atyp, ipport], @hmac_len)
+      %Stream{stream | ota: false}
+      |> Stream.send!(<<ota_atyp::8, ipport::binary, hmac::binary>>)
+      |> struct(ota: true)
+    else
+      Stream.send!(stream, <<atyp::8, ipport::binary>>)
+    end
+  end
+
+  # recv http proxy request
+  defp recv_http(sock) do
+    <<"ONNECT ">> = exactly_recv(sock, 7)
+    head = recv_http_head(sock)
+    [host_port, _] = String.split(head, " ", parts: 2)
+    [host, port] = String.split(host_port, ":")
+    # response ok
+    :ok = :gen_tcp.send(sock, "HTTP/1.1 200 Connection Established\r\n\r\n")
+
+    {@atyp_dom, <<byte_size(host)::8, host::binary, String.to_integer(port)::16>>}
+  end
+
   # recv socks5 request
-  def recv_socks5(sock) do
+  defp recv_socks5(sock) do
     # ------ handshark --------------------------
     # exactly socks5 version otherwise boom!!!
-    <<0x05::8, methods::8>> = exactly_recv(sock, 2)
+    # <<0x05::8, methods::8>> = exactly_recv(sock, 2)
+    <<methods::8>> = exactly_recv(sock, 1)
     # don't care methods
     _ = exactly_recv(sock, methods)
     # response ok
@@ -121,21 +154,22 @@ defmodule Shadowsocks.Protocol do
     {atyp, ret}
   end
 
-  def send_target(%Stream{encoder: encoder, ota: ota}=stream, {atyp, ipport}) do
-    if ota do
-      ota_atyp = atyp ||| @ota_flag
-      hmac = :crypto.hmac(:sha, [encoder.enc_iv, encoder.key], [ota_atyp, ipport], @hmac_len)
-      %Stream{stream | ota: false}
-      |> Stream.send!(<<ota_atyp::8, ipport::binary, hmac::binary>>)
-      |> struct(ota: true)
-    else
-      Stream.send!(stream, <<atyp::8, ipport::binary>>)
-    end
-  end
 
   defp exactly_recv(sock, size) do
     {:ok, ret} = :gen_tcp.recv(sock, size, @recv_timeout)
     ret
+  end
+
+  defp recv_http_head(sock, rest \\ "")
+  defp recv_http_head(sock, rest) do
+    ret = exactly_recv(sock, 0)
+    rest = rest <> ret
+
+    if String.ends_with?(rest, "\r\n\r\n") do
+      rest
+    else
+      recv_http_head(sock, rest)
+    end
   end
 
   defp recv_addr(@atyp_v4, sock), do: Stream.recv!(sock, 6)
