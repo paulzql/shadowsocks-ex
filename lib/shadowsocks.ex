@@ -45,6 +45,7 @@ defmodule Shadowsocks do
       2. `Shadowsocks.Conn.Server` - general server, alias is `:server`
       3. `Shadowsocks.Conn.TransparentClient` - transparent client, perfect with iptables
       4. `Shadowsocks.Conn.HTTP302` - redirect any http get request to `:redirect_url`, otherwise drop connections
+      5. `Shadowsocks.Conn.ObfsServer` - simple http obfs server (can both accept http obfs client and original shadowsocks client)
 
     * `port` required `integer` - listen port
     * `ip`   optional `tuple` - listen ip, example: `{127,0,0,1}`

@@ -5,7 +5,7 @@ defmodule Shadowsocks.Conn.Server do
   def init(socket, encoder, parent, args) do
     # recv target and check ota
     {stream, addr} =
-      Shadowsocks.Protocol.init_stream(socket, encoder)
+      Shadowsocks.Protocol.init_stream!(socket, encoder)
       |> Shadowsocks.Protocol.recv_target()
 
     ssock = Shadowsocks.Conn.connect!(addr, args)

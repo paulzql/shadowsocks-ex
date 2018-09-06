@@ -33,7 +33,7 @@ by adding `shadowsocks` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
-  [{:shadowsocks, "~> 0.3"}]
+  [{:shadowsocks, "~> 0.4"}]
 end
 ```
 
@@ -51,14 +51,15 @@ Shadowsocks.start(args)
 the `args` is a keyword list, fields:
 
  * `type` required `atom` - the connection type, `:client` or `:server` or custom module name
-    
+
     There are currently four built-in `type`:
-    
+
     1. `Shadowsocks.Conn.Client` - general client, alias is `:client`
     2. `Shadowsocks.Conn.Server` - general server, alias is `:server`
-    3. `Shadowsocks.Conn.TransparentClient` - transparent client, perfect with iptables
+    3. `Shadowsocks.Conn.TransparentClient` - transparent client, use iptables forward to this port instead socks5 client
     4. `Shadowsocks.Conn.HTTP302` - redirect any http get request to `:redirect_url`, otherwise drop connections
-    
+    5. `Shadowsocks.Conn.ObfsServer` - simple http obfs server (Compatible with raw protocol, It means that can both accept http obfs client and original shadowsocks client. see: [https://github.com/shadowsocks/simple-obfs](https://github.com/shadowsocks/simple-obfs))
+
  * `port` required `integer` - listen port
  * `ip`   optional `tuple` - listen ip, example: `{127,0,0,1}`
  * `method` optional `string` - encode method, default: `"rc4-md5"`
@@ -129,7 +130,7 @@ config :shadowsocks, :report,
     port_min_flow: 5 * 1024 * 1024, # report flow when cached flow exceed :port_min_flow
     port_min_time: 60 * 1000,       # report flow when cached flow after :port_min_time
     conn_min_flow: 5 * 1024 * 1024  # send flow to listener when cached flow exceed :conn_min_flow
-    
+
 config :shadowsocks, :protocol,
   recv_timeout: 180000,             # timeout for receive header
   anti_max_time: 10000,             # anti max delay time (ms), random sleep time before close connection
@@ -150,4 +151,3 @@ events:
 {:conn, :connect, {port, pid, {ret, addr, port}}} # connect to remote addr result
 {:port, :flow, {port, down, up}}           # flow report on the port
 ```
-

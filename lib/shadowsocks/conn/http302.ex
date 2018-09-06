@@ -9,7 +9,7 @@ defmodule Shadowsocks.Conn.Http302 do
 
   def init(socket, encoder, _parent, %{redirect_url: url}) do
     {stream, _} =
-      Shadowsocks.Protocol.init_stream(socket, encoder)
+      Shadowsocks.Protocol.init_stream!(socket, encoder)
       |> Shadowsocks.Protocol.recv_target()
 
     case Stream.recv(stream, 4, @timeout) do

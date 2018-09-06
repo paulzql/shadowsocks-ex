@@ -28,9 +28,26 @@ defmodule Shadowsocks.Protocol do
   @doc """
   init encoder socket stream
   """
-  def init_stream(sock, encoder) do
+  def init_stream!(sock, encoder) do
     {sock, ivdata} = Stream.recv!(sock, byte_size(encoder.enc_iv))
     %Stream{sock: sock, encoder: Encoder.init_decode(encoder, ivdata), ota_iv: ivdata}
+  end
+  def init_stream!(sock, encoder, data) do
+    case byte_size(encoder.enc_iv)-byte_size(data) do
+      n when n > 0 ->
+        {sock, rest} = Stream.recv!(sock, n)
+        ivdata = <<data::binary, rest::binary>>
+        %Stream{sock: sock, encoder: Encoder.init_decode(encoder, ivdata), ota_iv: ivdata}
+      n when n == 0 ->
+        %Stream{sock: sock, encoder: Encoder.init_decode(encoder, data), ota_iv: data}
+      n when n < 0 ->
+        len = byte_size(encoder.enc_iv)
+        <<ivdata::binary-size(len), rest::binary>> = data
+        {encoder, rest} = encoder
+            |> Encoder.init_decode(ivdata)
+            |> Shadowsocks.Encoder.decode(rest)
+        %Stream{sock: sock, encoder: encoder, ota_iv: ivdata, recv_rest: {[rest], byte_size(rest)}}
+    end
   end
 
   def send_iv!(stream) do
