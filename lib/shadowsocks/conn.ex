@@ -28,8 +28,6 @@ defmodule Shadowsocks.Conn do
     :proc_lib.init_ack({:ok, self()})
     wait_socket(socket)
 
-    Shadowsocks.Event.open_conn(args[:port], self(), socket)
-
     args[:type]
     |> apply(:init, [socket, Encoder.init(method, pass), parent, args])
   end

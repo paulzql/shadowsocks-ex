@@ -28,18 +28,23 @@ defmodule Shadowsocks.UDPRelay do
   defp loop(lsock, encoder, parent) do
     receive do
       {:udp, ^lsock, caddr, cport, data} ->
-        client = {caddr, cport}
-        pid =
-          case Process.get(client) do
-            nil ->
-              {p,_} = spawn_monitor(fn -> init_conn(lsock, encoder, parent, client) end)
-              Process.put(client, p)
-              Process.put(p, client)
-              p
-            pid ->
-              pid
-          end
-        send pid, {:client, data}
+        case Shadowsocks.BlackList.blocked?(caddr) do
+          true ->
+            :ignore
+          _ ->
+            client = {caddr, cport}
+            pid =
+              case Process.get(client) do
+                nil ->
+                  {p,_} = spawn_monitor(fn -> init_conn(lsock, encoder, parent, client) end)
+                  Process.put(client, p)
+                  Process.put(p, client)
+                  p
+                pid ->
+                  pid
+              end
+            send pid, {:client, data}
+        end
 
         :inet.setopts(lsock, active: :once)
         loop(lsock, encoder, parent)

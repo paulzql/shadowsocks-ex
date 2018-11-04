@@ -13,6 +13,7 @@ defmodule Shadowsocks.Application do
       # Starts a worker by calling: Shadowsocks.Worker.start_link(arg1, arg2, arg3)
       # worker(Shadowsocks.Worker, [arg1, arg2, arg3]),
       worker(:gen_event, [{:local, Shadowsocks.Event}], modules: :dynamic),
+      worker(Shadowsocks.BlackList, []),
       supervisor(Shadowsocks.ListenerSup, [])
     ]
 

@@ -95,18 +95,14 @@ defmodule Shadowsocks.Listener do
   end
 
   def handle_info({:inet_async, lsock, _, {:ok, csock}}, state) do
-    {:ok, opts} = :inet.getopts(lsock, [:active, :nodelay, :keepalive, :delay_send, :priority, :tos])
-    :ok = :inet.setopts(csock, opts)
-    true = :inet_db.register_socket(csock, :inet_tcp)
-    {:ok, pid} = Shadowsocks.Conn.start_link(csock, state(state, :args))
-    Process.put(pid, {0, 0})
-    case :gen_tcp.controlling_process(csock, pid) do
-      :ok ->
-        send pid, {:shoot, csock}
-      {:error, _} ->
-        Process.exit(pid, :kill)
+    with {:ok, {addr, _}} <- :inet.peername(csock),
+         false <- Shadowsocks.BlackList.blocked?(addr) do
+          init_conn(lsock, csock, addr, state)
+    else
+      _ ->
         :gen_tcp.close(csock)
     end
+
     case :prim_inet.async_accept(state(state,:lsock), -1) do
       {:ok, _} ->
         {:noreply, state}
@@ -125,16 +121,21 @@ defmodule Shadowsocks.Listener do
   end
   # TCP
   def handle_info({:flow, pid, down, up}, state) do
-    with {old_down, old_up} <- Process.get(pid) do
-      Process.put(pid, {old_down+down, old_up+up})
+    with {addr,old_down, old_up} <- Process.get(pid) do
+      Process.put(pid, {addr,old_down+down, old_up+up})
     end
     {:noreply, save_flow(down, up, state)}
   end
 
   def handle_info({:EXIT, pid, reason}, state(port: port)=state) do
-    with {down, up} <- Process.get(pid) do
+    with {addr,down, up} <- Process.get(pid) do
       Shadowsocks.Event.close_conn(port, pid, reason, {down, up})
       Process.delete(pid)
+      case reason do
+        :bad_request ->
+          Shadowsocks.Event.bad_request(port, addr)
+        _ -> :ok
+      end
     end
     {:noreply, state}
   end
@@ -148,6 +149,22 @@ defmodule Shadowsocks.Listener do
   end
   def terminate(_, state) do
     state
+  end
+
+  defp init_conn(lsock, csock, addr, state) do
+    {:ok, opts} = :inet.getopts(lsock, [:active, :nodelay, :keepalive, :delay_send, :priority, :tos])
+    :ok = :inet.setopts(csock, opts)
+    true = :inet_db.register_socket(csock, :inet_tcp)
+    {:ok, pid} = Shadowsocks.Conn.start_link(csock, state(state, :args))
+    Process.put(pid, {addr, 0, 0})
+    case :gen_tcp.controlling_process(csock, pid) do
+      :ok ->
+        Shadowsocks.Event.open_conn(state(state, :port), pid, addr)
+        send pid, {:shoot, csock}
+      {:error, _} ->
+        Process.exit(pid, :kill)
+        :gen_tcp.close(csock)
+    end
   end
 
   defp save_flow(down, up, state(up: pup, down: pdown, flow_time: ft)=s) do

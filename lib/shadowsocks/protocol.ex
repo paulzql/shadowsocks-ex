@@ -29,8 +29,14 @@ defmodule Shadowsocks.Protocol do
   init encoder socket stream
   """
   def init_stream!(sock, encoder) do
-    {sock, ivdata} = Stream.recv!(sock, byte_size(encoder.enc_iv))
-    %Stream{sock: sock, encoder: Encoder.init_decode(encoder, ivdata), ota_iv: ivdata}
+    case Stream.recv(sock, byte_size(encoder.enc_iv), Stream.recv_timeout()) do
+      {:ok, sock, ivdata} ->
+        %Stream{sock: sock, encoder: Encoder.init_decode(encoder, ivdata), ota_iv: ivdata}
+      {:error, _, :timeout} ->
+        exit(:bad_request)
+      _ ->
+        exit(:normal)
+    end
   end
   def init_stream!(sock, encoder, data) do
     case byte_size(encoder.enc_iv)-byte_size(data) do
@@ -64,13 +70,20 @@ defmodule Shadowsocks.Protocol do
   receive the client request
   """
   def recv_target(stream) do
-    {stream, <<addr_type::8>>} = Stream.recv!(stream, 1)
+    {stream, <<addr_type::8>>} = 
+        case Stream.recv(stream, 1, Stream.recv_timeout()) do
+          {:ok, stream, data} -> {stream, data}
+          {:error, _, :timeout} -> exit(:bad_request)
+          _ -> exit(:normal)
+        end
     {stream, ipport_bin} = recv_addr(addr_type &&& 0x0F, stream)
 
     ipport = parse_addr(addr_type &&& 0x0F, ipport_bin)
     if (addr_type &&& @ota_flag) == @ota_flag do
       {stream, <<hmac::binary-size(@hmac_len)>>} = Stream.recv!(stream, @hmac_len)
-      ^hmac = :crypto.hmac(:sha, [stream.ota_iv, stream.encoder.key], [addr_type,ipport_bin], @hmac_len)
+      unless hmac == :crypto.hmac(:sha, [stream.ota_iv, stream.encoder.key], [addr_type,ipport_bin], @hmac_len) do
+        exit(:bad_request)
+      end
       {%Stream{stream | ota: true}, ipport}
     else
       {stream, ipport}
@@ -200,6 +213,10 @@ defmodule Shadowsocks.Protocol do
     defp recv_addr(_, sock) do
       anti_detect(sock)
     end
+  else
+    defp recv_addr(_, _) do
+      exit(:bad_request)
+    end
   end
 
   defp parse_addr(@atyp_v4, <<ip1::8,ip2::8,ip3::8,ip4::8,port::16>>), do: {{ip1,ip2,ip3,ip4}, port}
@@ -208,6 +225,10 @@ defmodule Shadowsocks.Protocol do
   if @anti_detect do
     defp parse_addr(_, sock) do
       anti_detect(sock)
+    end
+  else
+    defp parse_addr(_, _) do
+      exit(:bad_request)
     end
   end
 
@@ -219,7 +240,7 @@ defmodule Shadowsocks.Protocol do
         trashs = :crypto.strong_rand_bytes(:rand.uniform(@anti_max_bytes))
         Stream.send(sock, trashs)
       end
-      exit(:normal)
+      exit(:bad_request)
     end
   end
 

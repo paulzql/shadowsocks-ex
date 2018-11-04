@@ -34,6 +34,13 @@ config :shadowsocks, :protocol,
   anti_max_bytes: 500,
   anti_detect: true
 
+# dynamic block attack ip
+config :shadowsocks, :dynamic_blocklist,
+  enable: true,
+  attack_times: 30, # block ip when attack times more than attack_times in collect_duration
+  collect_duration: 3600 * 1000, # collect attack times every collect_duration
+  block_expire: 7 * 3600 * 1000 # how long to block ip
+
 # It is also possible to import configuration files, relative to this
 # directory. For example, you can emulate configuration per environment
 # by uncommenting the line below and defining dev.exs, test.exs and such.

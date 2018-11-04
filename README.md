@@ -13,6 +13,8 @@ Features:
 - Mulit user support
 - Transparent Proxy Client support
 - Anti protocol detection
+- IP blacklist support
+- Simple obfs support
 
 Encryption methods
 - rc4-md5
@@ -33,7 +35,7 @@ by adding `shadowsocks` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
-  [{:shadowsocks, "~> 0.4"}]
+  [{:shadowsocks, "~> 0.5"}]
 end
 ```
 
@@ -84,6 +86,38 @@ Shadowsocks.update(port, args)
 
   the `args` is a keyword list, *see `Shadowsocks.start/1` method*
 
+## IP blacklist
+### block ip
+
+```elixir
+# block ipv4 address (also will add a ipv6 rule when ipv4 rule added)
+Shadowsocks.BlackList.add({127,0,0,1})
+# block ipv6 address
+Shadowsocks.BlackList.add({0,0,0,0,0,0,0,1})
+```
+
+### unblock ip
+
+```elixir
+Shadowsocks.BlackList.del({127,0,0,1})
+```
+
+### clear blacklist
+
+```elixir
+# clear all rules
+Shadowsocks.BlackList.clear(:all)
+# clear static rules
+Shadowsocks.BlackList.clear(:static)
+# clear dynamic rules
+Shadowsocks.BlackList.clear(:dynamic)
+```
+
+### list blacklist
+
+```elixir
+Shadowsocks.BlackList.list()
+```
 
 ## Configuration
 
@@ -138,6 +172,17 @@ config :shadowsocks, :protocol,
   anti_detect: true                 # on / off anti protocol detection
 ```
 
+### runtime configs
+
+```elixir
+# dynamic block attack ip
+config :shadowsocks, :dynamic_blocklist,
+  enable: true,
+  attack_times: 30, # block ip when attack times more than attack_times in attack_time
+  collect_duration: 3600 * 1000, # collect attack times every collect_duration
+  block_expire: 7 * 3600 * 1000 # how long to block ip
+```
+
 ## Connection Events
 
 Event name: `Shadowsocks.Event`
@@ -150,4 +195,6 @@ events:
 {:conn, :close, {port, pid, reason, flow}} # when connection process exited
 {:conn, :connect, {port, pid, {ret, addr, port}}} # connect to remote addr result
 {:port, :flow, {port, down, up}}           # flow report on the port
+{:bad_request, port, addr} # bad client connection detected (`port` is listener port, `addr` is client addr)
+{:dynamic_blocked, addr} # the addr was blocked by dynamic block rules
 ```

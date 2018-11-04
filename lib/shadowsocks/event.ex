@@ -7,16 +7,21 @@ defmodule Shadowsocks.Event do
     end
   end
 
-  defmacro open_conn(port, pid, sock) do
+  defmacro open_conn(port, pid, addr) do
     quote do
-      {:ok, {addr, _}} = :inet.peername(unquote(sock))
-      :gen_event.notify(Shadowsocks.Event, {:conn, :open, {unquote(port), unquote(pid), addr}})
+      :gen_event.notify(Shadowsocks.Event, {:conn, :open, {unquote(port), unquote(pid), unquote(addr)}})
     end
   end
 
   defmacro close_conn(port, pid, reason, flow) do
     quote do
       :gen_event.notify(Shadowsocks.Event, {:conn, :close, {unquote(port), unquote(pid), unquote(reason), unquote(flow)}})
+    end
+  end
+
+  defmacro bad_request(port, addr) do
+    quote do
+      :gen_event.notify(Shadowsocks.Event, {:bad_request, unquote(port), unquote(addr)})
     end
   end
 
@@ -38,4 +43,9 @@ defmodule Shadowsocks.Event do
     end
   end
 
+  defmacro dynamic_blocked(addr) do
+    quote do
+      :gen_event.notify(Shadowsocks.Event, {:dynamic_blocked, unquote(addr)})
+    end
+  end
 end

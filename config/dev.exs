@@ -4,7 +4,7 @@ config :shadowsocks, :listeners,
   [
     [
       # type: Shadowsocks.Conn.Http302,
-      type: Shadowsocks.Conn.ObfsServer,
+      type: :server, #Shadowsocks.Conn.ObfsServer,
       method: "rc4-md5",
       password: "pass",
       port: 8888,
@@ -31,3 +31,13 @@ config :shadowsocks, :listeners,
     #   ip: {127, 0, 0, 1}
     # ],
   ]
+
+  config :shadowsocks, :protocol,
+    recv_timeout: 5000,
+    anti_max_time: 1000,
+    anti_max_bytes: 1,
+    anti_detect: true
+
+# dynamic block attack ip
+config :shadowsocks, :dynamic_blocklist,
+  enable: false

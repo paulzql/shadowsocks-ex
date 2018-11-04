@@ -1,9 +1,10 @@
 defmodule Shadowsocks.Stream do
   defstruct sock: nil, encoder: nil, recv_rest: {<<>>, 0}, ota_iv: nil, ota_id: 0, ota: false
 
-  @recv_timeout 180000
+  @recv_timeout Application.get_env(:shadowsocks, :protocol, []) |> Keyword.get(:recv_timeout, 180000)
   @hmac_len 10
 
+  def recv_timeout, do: @recv_timeout
   @moduledoc """
   process stream transport and decode / encode
   """
