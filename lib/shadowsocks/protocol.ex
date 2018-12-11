@@ -22,6 +22,31 @@ defmodule Shadowsocks.Protocol do
   @hmac_len 10
   @ota_flag 0x10
 
+  @doc """
+    skip local lookback addrs, prevent attacks
+  """
+  defmacro skip_localhost(addr) do
+    if Application.get_env(:shadowsocks, :skip_localhost, true) do
+      quote bind_quoted: [addr: addr] do
+        case addr do
+          {127, 0, 0, 1} ->
+            exit(:normal)
+          {0,0,0,0,0,0xFFFF, 0x7F01,0x0001} ->
+            exit(:normal)
+          {0,0,0,0,0,0,0,1} ->
+            exit(:normal)
+          "127.0.0.1" ->
+            exit(:normal)
+          "localhost" ->
+            exit(:normal)
+          "::1" ->
+            exit(:normal)
+          _ -> addr
+        end
+      end
+    end
+  end
+
   ## ----------------------------------------------------------------------------------------------------
   ## server side  function for init protocol
   ## ----------------------------------------------------------------------------------------------------

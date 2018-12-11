@@ -1,13 +1,15 @@
 defmodule Shadowsocks.Conn.Server do
   alias Shadowsocks.Stream
+  require Shadowsocks.Protocol
+
   @behaviour  Shadowsocks.Conn
-  
+
   def init(socket, encoder, parent, args) do
     # recv target and check ota
     {stream, addr} =
       Shadowsocks.Protocol.init_stream!(socket, encoder)
       |> Shadowsocks.Protocol.recv_target()
-
+    Shadowsocks.Protocol.skip_localhost(elem(addr,0))
     ssock = Shadowsocks.Conn.connect!(addr, args)
 
     conn_pid = self()

@@ -1,6 +1,6 @@
 defmodule Shadowsocks.UDPRelay do
-
   alias Shadowsocks.Encoder
+  require Shadowsocks.Protocol
 
   @timeout 15 * 60 * 1000
   @flow_report_limit 1024 * 1024
@@ -80,7 +80,7 @@ defmodule Shadowsocks.UDPRelay do
           encoder
           |> Encoder.decode_once(data)
           |> Shadowsocks.Protocol.unpack
-
+        Shadowsocks.Protocol.skip_localhost(addr)
         :gen_udp.send(arg.socket, addr, port, data)
         conn_loop(lsock, encoder, arg)
 

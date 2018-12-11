@@ -170,6 +170,7 @@ config :shadowsocks, :protocol,
   anti_max_time: 10000,             # anti max delay time (ms), random sleep time before close connection
   anti_max_bytes: 500,              # anti max reply bytes, random bytes send to client
   anti_detect: true                 # on / off anti protocol detection
+config :shadowsocks,:skip_localhost, true # skip local lookback address(remote address), prevent attacks
 ```
 
 ### runtime configs

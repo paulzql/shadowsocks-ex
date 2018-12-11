@@ -41,6 +41,7 @@ config :shadowsocks, :dynamic_blocklist,
   collect_duration: 3600 * 1000, # collect attack times every collect_duration
   block_expire: 7 * 3600 * 1000 # how long to block ip
 
+config :shadowsocks,:skip_localhost, true
 # It is also possible to import configuration files, relative to this
 # directory. For example, you can emulate configuration per environment
 # by uncommenting the line below and defining dev.exs, test.exs and such.
