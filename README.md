@@ -1,3 +1,4 @@
+
 # Shadowsocks-ex
 
 shadowsocks-ex is a elixir port of [shadowsocks](https://github.com/shadowsocks/shadowsocks)
@@ -59,8 +60,7 @@ the `args` is a keyword list, fields:
     1. `Shadowsocks.Conn.Client` - general client, alias is `:client`
     2. `Shadowsocks.Conn.Server` - general server, alias is `:server`
     3. `Shadowsocks.Conn.TransparentClient` - transparent client, use iptables forward to this port instead socks5 client
-    4. `Shadowsocks.Conn.HTTP302` - redirect any http get request to `:redirect_url`, otherwise drop connections
-    5. `Shadowsocks.Conn.ObfsServer` - simple http obfs server (Compatible with raw protocol, It means that can both accept http obfs client and original shadowsocks client. see: [https://github.com/shadowsocks/simple-obfs](https://github.com/shadowsocks/simple-obfs))
+    4. `Shadowsocks.Conn.ObfsServer` - simple http obfs server (Compatible with raw protocol, It means that can both accept http obfs client and original shadowsocks client. see: [https://github.com/shadowsocks/simple-obfs](https://github.com/shadowsocks/simple-obfs))
 
  * `port` required `integer` - listen port
  * `ip`   optional `tuple` - listen ip, example: `{127,0,0,1}`

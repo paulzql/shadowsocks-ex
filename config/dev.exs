@@ -10,7 +10,7 @@ config :shadowsocks, :listeners,
       port: 8888,
       ota: false,
       udp: true,
-      failover: "http://ionet.cc"
+      failover: "https://www.google.com"
     ],
     [
       type: :client,
