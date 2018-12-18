@@ -55,7 +55,7 @@ defmodule Shadowsocks.BlackList do
     """
     @spec clear(:static | :dynamic | :all) :: boolean
     def clear(:all) do
-        :ets.delete(@tab)
+        :ets.delete_all_objects(@tab)
     end
     def clear(:static) do
         :ets.match_delete(@tab, {:_, :static, :_})
@@ -78,7 +78,7 @@ defmodule Shadowsocks.BlackList do
                               :named_table, 
                               :public, 
                               {:read_concurrency, true}])
-        :ets.new(@cache_tab, [:set, :protected, :named_table])
+        @cache_tab = :ets.new(@cache_tab, [:set, :protected, :named_table])
         with args <- Application.get_env(:shadowsocks, :dynamic_blocklist),
              true <- Keyword.keyword?(args),
              true <- Keyword.get(args, :enable, false),
@@ -113,7 +113,7 @@ defmodule Shadowsocks.BlackList do
         {:noreply, state}
     end
     def handle_info(:attack_check, %{attack_time: attack_time}=state) do
-        :ets.delete(@cache_tab)
+        :ets.delete_all_objects(@cache_tab)
         Process.send_after self(), :attack_check, attack_time
         {:noreply, state}
     end
